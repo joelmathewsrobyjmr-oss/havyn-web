@@ -9,6 +9,7 @@ import ResidentListView from './pages/ResidentListView';
 import ResidentFormView from './pages/ResidentFormView';
 import AttendanceView from './pages/AttendanceView';
 import AttendanceReportView from './pages/AttendanceReportView';
+import DocumentsView from './pages/DocumentsView';
 import MainLayout from './layouts/MainLayout';
 import './App.css';
 
@@ -32,6 +33,7 @@ function App() {
             <Route path="/resident/:id" element={<ResidentFormView />} />
             <Route path="/attendance" element={<AttendanceView />} />
             <Route path="/attendance-report" element={<AttendanceReportView />} />
+            <Route path="/documents" element={<DocumentsView />} />
           </Route>
         </Routes>
       </Router>

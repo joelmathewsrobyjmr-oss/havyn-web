@@ -34,6 +34,9 @@ const ResidentFormView = () => {
   const [showUploadMenu, setShowUploadMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+  // Pending files to upload after getting resident ID (for new residents)
+  const [pendingFiles, setPendingFiles] = useState({ profile: null, aadhaar: null });
+
   useEffect(() => {
     if (isEditing) loadResident();
   }, [id]);
@@ -43,7 +46,17 @@ const ResidentFormView = () => {
     try {
       const snap = await getDoc(doc(db, 'residents', id));
       if (snap.exists()) {
-        setFormData({ profileImage: '', aadhaarImage: '', ...snap.data() });
+        const data = { profileImage: '', aadhaarImage: '', ...snap.data() };
+        setFormData(data);
+        // Also fetch latest images from server
+        try {
+          const imgRes = await fetch(`${API_URL}/api/residents/${id}/images`);
+          const imgData = await imgRes.json();
+          if (imgData.success) {
+            if (imgData.profile) setFormData(prev => ({ ...prev, profileImage: imgData.profile }));
+            if (imgData.aadhaar) setFormData(prev => ({ ...prev, aadhaarImage: imgData.aadhaar }));
+          }
+        } catch { /* server might be offline, use Firestore URLs */ }
       } else {
         setError('Resident not found.');
       }
@@ -60,12 +73,12 @@ const ResidentFormView = () => {
     setFormData(prev => ({ ...prev, [fieldId]: value }));
   };
 
-  // Upload image to server
-  const uploadToServer = async (file, type) => {
+  // Upload image to server (linked to resident ID)
+  const uploadToServer = async (file, type, residentId) => {
     const formPayload = new FormData();
     formPayload.append('image', file);
     try {
-      const res = await fetch(`${API_URL}/api/upload/${type}`, {
+      const res = await fetch(`${API_URL}/api/residents/${residentId}/upload/${type}`, {
         method: 'POST',
         body: formPayload
       });
@@ -85,15 +98,28 @@ const ResidentFormView = () => {
       setError('Image must be under 5MB.');
       return;
     }
-    setUploading(field);
     setError('');
-    try {
-      const imageUrl = await uploadToServer(file, type);
-      setFormData(prev => ({ ...prev, [field]: imageUrl }));
-    } catch (err) {
-      setError('Failed to upload image. Make sure the server is running.');
-    } finally {
-      setUploading('');
+
+    if (isEditing) {
+      // Existing resident: upload immediately with their ID
+      setUploading(field);
+      try {
+        const imageUrl = await uploadToServer(file, type, id);
+        setFormData(prev => ({ ...prev, [field]: imageUrl }));
+      } catch (err) {
+        setError('Failed to upload image. Make sure the server is running.');
+      } finally {
+        setUploading('');
+        setShowUploadMenu(false);
+        setShowProfileMenu(false);
+      }
+    } else {
+      // New resident: store file locally, upload after save
+      setPendingFiles(prev => ({ ...prev, [type]: file }));
+      // Show a local preview
+      const reader = new FileReader();
+      reader.onload = (ev) => setFormData(prev => ({ ...prev, [field]: ev.target.result }));
+      reader.readAsDataURL(file);
       setShowUploadMenu(false);
       setShowProfileMenu(false);
     }
@@ -104,13 +130,37 @@ const ResidentFormView = () => {
     setSaving(true);
     setError('');
     try {
+      let residentId = id;
+      const saveData = { ...formData };
+
       if (isEditing) {
-        await setDoc(doc(db, 'residents', id), formData, { merge: true });
+        await setDoc(doc(db, 'residents', id), saveData, { merge: true });
       } else {
-        await addDoc(collection(db, 'residents'), {
-          ...formData,
+        // Create resident first to get the ID
+        const cleanData = { ...saveData };
+        // Remove local base64 previews before saving to Firestore
+        if (cleanData.profileImage?.startsWith('data:')) cleanData.profileImage = '';
+        if (cleanData.aadhaarImage?.startsWith('data:')) cleanData.aadhaarImage = '';
+
+        const docRef = await addDoc(collection(db, 'residents'), {
+          ...cleanData,
           createdAt: new Date().toISOString()
         });
+        residentId = docRef.id;
+
+        // Now upload pending files with the new resident ID
+        if (pendingFiles.profile) {
+          try {
+            const url = await uploadToServer(pendingFiles.profile, 'profile', residentId);
+            await setDoc(doc(db, 'residents', residentId), { profileImage: url }, { merge: true });
+          } catch (err) { console.error('Profile upload failed:', err); }
+        }
+        if (pendingFiles.aadhaar) {
+          try {
+            const url = await uploadToServer(pendingFiles.aadhaar, 'aadhaar', residentId);
+            await setDoc(doc(db, 'residents', residentId), { aadhaarImage: url }, { merge: true });
+          } catch (err) { console.error('Aadhaar upload failed:', err); }
+        }
       }
       navigate('/residents', { replace: true });
     } catch (err) {
@@ -125,8 +175,10 @@ const ResidentFormView = () => {
     if (!window.confirm('Are you sure you want to delete this resident?')) return;
     setSaving(true);
     try {
+      // Delete images from server
+      try { await fetch(`${API_URL}/api/residents/${id}/images`, { method: 'DELETE' }); } catch {}
       await deleteDoc(doc(db, 'residents', id));
-      navigate('/residents');
+      navigate('/residents', { replace: true });
     } catch (err) {
       setError('Failed to delete.');
       console.error(err);

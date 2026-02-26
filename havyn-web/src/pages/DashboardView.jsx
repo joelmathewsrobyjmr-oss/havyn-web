@@ -83,7 +83,7 @@ const DashboardView = () => {
           title="Documents"
           description="Manage important paperwork"
           color="#f59e0b"
-          onClick={() => {}}
+          onClick={() => navigate('/documents')}
         />
         <DashboardCard 
           icon={CalendarCheck}
