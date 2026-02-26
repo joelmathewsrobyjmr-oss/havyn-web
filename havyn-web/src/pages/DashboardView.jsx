@@ -85,13 +85,7 @@ const DashboardView = () => {
           color="#f59e0b"
           onClick={() => navigate('/documents')}
         />
-        <DashboardCard 
-          icon={CalendarCheck}
-          title="Attendance Report"
-          description="Download attendance reports"
-          color="#8b5cf6"
-          onClick={() => navigate('/attendance-report')}
-        />
+
         <DashboardCard 
           icon={Settings}
           title="Settings"
