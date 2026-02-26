@@ -10,6 +10,7 @@ import ResidentFormView from './pages/ResidentFormView';
 import AttendanceView from './pages/AttendanceView';
 import AttendanceReportView from './pages/AttendanceReportView';
 import DocumentsView from './pages/DocumentsView';
+import SettingsView from './pages/SettingsView';
 import MainLayout from './layouts/MainLayout';
 import './App.css';
 
@@ -34,6 +35,7 @@ function App() {
             <Route path="/attendance" element={<AttendanceView />} />
             <Route path="/attendance-report" element={<AttendanceReportView />} />
             <Route path="/documents" element={<DocumentsView />} />
+            <Route path="/settings" element={<SettingsView />} />
           </Route>
         </Routes>
       </Router>

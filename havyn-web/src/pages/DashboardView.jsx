@@ -53,7 +53,7 @@ const DashboardView = () => {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.5s ease-out' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Welcome, Admin</h1>
+          <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Welcome, {user?.displayName || user?.email?.split('@')[0] || 'User'}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             {user?.email}
           </p>
@@ -91,7 +91,7 @@ const DashboardView = () => {
           title="Settings"
           description="App configuration"
           color="var(--text-muted)"
-          onClick={() => {}}
+          onClick={() => navigate('/settings')}
         />
       </div>
       
