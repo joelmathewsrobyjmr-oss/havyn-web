@@ -134,7 +134,7 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div style={{ 
+      <div className="mobile-1-col" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
         gap: '1.5rem' 
@@ -167,7 +167,7 @@ const DashboardView = () => {
 
       <div>
         <h2 style={{ fontSize: '1.25rem', marginBottom: '1.25rem', fontWeight: '600' }}>Quick Actions</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+        <div className="mobile-1-col" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
           <DashboardCard 
             icon={Users}
             title="Resident Management"

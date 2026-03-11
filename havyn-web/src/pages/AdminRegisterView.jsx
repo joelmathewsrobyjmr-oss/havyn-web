@@ -102,7 +102,7 @@ const AdminRegisterView = () => {
       </div>
 
       <GlassCard style={{ width: '100%', maxWidth: '600px', padding: '2.5rem' }}>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <form onSubmit={handleSubmit} className="mobile-1-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           
           {error && (
             <div style={{

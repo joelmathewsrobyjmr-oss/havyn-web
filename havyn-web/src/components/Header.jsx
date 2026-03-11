@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Feather, Bell, ArrowLeft, LogOut, X, Clock, Check } from 'lucide-react';
+import { Menu, Feather, Bell, ArrowLeft, LogOut, X, Clock, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import GlassCard from './GlassCard';
 
-const Header = () => {
+const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, institutionId } = useAuth();
@@ -80,6 +80,13 @@ const Header = () => {
   return (
     <header className="glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--border)', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <button 
+          className="show-on-mobile" 
+          onClick={toggleSidebar} 
+          style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+        >
+          <Menu size={24} />
+        </button>
         {!isHome && (
           <button onClick={() => navigate(-1)} style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', cursor: 'pointer', background: 'none', border: 'none' }}>
             <ArrowLeft size={22} />

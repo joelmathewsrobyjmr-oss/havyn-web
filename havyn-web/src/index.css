@@ -27,6 +27,7 @@
 
   --font-sans: 'Outfit', sans-serif;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-width: 240px;
 }
 
 
@@ -142,5 +143,49 @@ a {
   margin: 0 auto;
   padding: 2rem 1rem;
   width: 100%;
+}
+
+/* ── Mobile Utilities ────────────────────────────── */
+.hide-on-mobile {
+  display: flex;
+}
+.show-on-mobile {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  .show-on-mobile {
+    display: flex !important;
+  }
+
+  /* Typography adjustments for mobile */
+  html {
+    font-size: 14px;
+  }
+
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  
+  /* Generic mobile padding */
+  .mobile-padding {
+    padding: 1rem !important;
+  }
+
+  /* Force grids to 1 column on mobile */
+  .mobile-1-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Table wrapper for horizontal scroll */
+  .table-responsive-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
 }
 

@@ -10,11 +10,12 @@ import {
   ChevronRight,
   Activity,
   Package,
-  BarChart3
+  BarChart3,
+  X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userData } = useAuth();
@@ -33,20 +34,39 @@ const Sidebar = () => {
   ];
 
   return (
-    <aside style={{
-      width: '240px',
-      backgroundColor: 'white',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
-      transition: 'var(--transition)'
-    }}>
-      <div style={{ padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <div style={{ 
+    <>
+      {/* Mobile Overlay Background */}
+      {isOpen && (
+        <div 
+          onClick={() => setIsOpen(false)}
+          className="show-on-mobile"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 40,
+            backdropFilter: 'blur(2px)'
+          }}
+        />
+      )}
+
+      {/* Actual Sidebar */}
+      <aside 
+        className="sidebar-wrapper"
+        style={{
+          width: 'var(--sidebar-width)',
+          backgroundColor: 'white',
+          borderRight: '1px solid var(--border)',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          zIndex: 50,
+          transition: 'transform 0.3s ease-in-out',
+        }}
+      >
+        <div style={{ padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ 
           width: '32px', 
           height: '32px', 
           borderRadius: 'var(--radius-md)', 
@@ -58,12 +78,20 @@ const Sidebar = () => {
         }}>
           <span style={{ fontWeight: '800', fontSize: '1rem' }}>H</span>
         </div>
-        <span style={{ fontWeight: '800', fontSize: '1.25rem', letterSpacing: '-0.02em', fontFamily: 'serif' }}>
-          HAVYN
-        </span>
-      </div>
+          <span style={{ fontWeight: '800', fontSize: '1.25rem', letterSpacing: '-0.02em', fontFamily: 'serif' }}>
+            HAVYN
+          </span>
+          </div>
+          <button 
+            className="show-on-mobile" 
+            onClick={() => setIsOpen(false)}
+            style={{ padding: '4px', background: 'var(--background)', borderRadius: 'var(--radius-sm)' }}
+          >
+            <X size={20} color="var(--text-muted)" />
+          </button>
+        </div>
 
-      <nav style={{ flex: 1, padding: '0 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+        <nav style={{ flex: 1, padding: '0 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {menuItems.map((item) => {
           // Smart active detection per route
           let isActive = false;
@@ -79,7 +107,10 @@ const Sidebar = () => {
           return (
             <div
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                navigate(item.path);
+                setIsOpen(false);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -133,6 +164,24 @@ const Sidebar = () => {
         </div>
       </div>
     </aside>
+
+      {/* Add CSS for the sidebar desktop/mobile toggle via injected styles or generic classes. */}
+      <style>{`
+        .sidebar-wrapper {
+          position: sticky;
+          top: 0;
+          transform: translateX(0);
+        }
+        @media (max-width: 768px) {
+          .sidebar-wrapper {
+            position: fixed;
+            left: 0;
+            top: 0;
+            transform: ${isOpen ? 'translateX(0)' : 'translateX(-100%)'};
+          }
+        }
+      `}</style>
+    </>
   );
 };
 
