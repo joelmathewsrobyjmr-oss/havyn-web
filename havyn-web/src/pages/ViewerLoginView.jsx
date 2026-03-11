@@ -18,6 +18,20 @@ const ViewerLoginView = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const { user, role, loading: authLoading } = useAuth();
+  
+  // Safe redirect based on loaded user & role
+  React.useEffect(() => {
+    // Only redirect if auth isn't in a mid-load state
+    if (user && role && !authLoading) {
+      if (role === 'viewer') {
+        navigate('/viewer/dashboard');
+      } else if (role === 'admin') {
+        navigate('/dashboard');
+      }
+    }
+  }, [user, role, authLoading, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -34,20 +48,18 @@ const ViewerLoginView = () => {
           role: 'viewer',
           createdAt: new Date().toISOString()
         });
-        
-        navigate('/viewer/dashboard');
+        // Navigation is handled by the useEffect above
       } else {
         await login(email, password);
-        // AuthContext will handle fetching role, but we wait for it or just navigate
-        navigate('/viewer/dashboard');
+        // Navigation is handled by the useEffect above
       }
     } catch (err) {
       console.error(err);
       setError(err.message || 'Authentication failed');
-    } finally {
-      setLoading(false);
+      setLoading(false); // only stop loading on error, let effect handle success redirect
     }
   };
+
 
   return (
     <div 
