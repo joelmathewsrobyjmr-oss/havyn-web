@@ -113,7 +113,7 @@ const LoginView = () => {
           Welcome Back
         </h1>
         <p style={{ color: 'var(--text-muted)' }}>
-          Log in to your {role.charAt(0).toUpperCase() + role.slice(1)} account
+          Log in to your {urlRole.charAt(0).toUpperCase() + urlRole.slice(1)} account
         </p>
       </div>
 
@@ -192,7 +192,7 @@ const LoginView = () => {
             )}
           </Button>
 
-          {role === 'admin' && (
+          {urlRole === 'admin' && (
             <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
               <button 
                 type="button"
