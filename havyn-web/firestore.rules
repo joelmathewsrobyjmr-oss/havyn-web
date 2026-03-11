@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+    
+    function isViewer() {
+      return isAuthenticated() && getUserData().role == 'viewer';
+    }
+    
+    function isInstitutionAdmin(instId) {
+      return isAdmin() && getUserData().institutionId == instId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Institutions collection
+    match /institutions/{instId} {
+      // Public profile is readable by all authenticated users
+      allow read: if isAuthenticated();
+      // Only the assigned admin can update institution details
+      allow update: if isInstitutionAdmin(instId);
+      allow create: if isAdmin(); // Initial creation usually via admin register
+      
+      // Residents
+      match /residents/{residentId} {
+        allow read, write: if isInstitutionAdmin(instId);
+      }
+      
+      // Attendance
+      match /attendance/{atId} {
+        allow read, write: if isInstitutionAdmin(instId);
+      }
+      
+      // Documents
+      match /documents/{docId} {
+        allow read, write: if isInstitutionAdmin(instId);
+      }
+      
+      // Notifications
+      match /notifications/{notifId} {
+        allow read: if isInstitutionAdmin(instId);
+        allow create: if isAuthenticated(); // Anyone can trigger a notification (e.g. donor)
+        allow update: if isInstitutionAdmin(instId);
+      }
+      
+      // Food Donations
+      match /foodDonations/{donId} {
+        allow read: if isInstitutionAdmin(instId) || (isAuthenticated() && resource.data.userId == request.auth.uid);
+        allow create: if isAuthenticated();
+        allow update: if isInstitutionAdmin(instId);
+      }
+      
+      // Fund Donations
+      match /fundDonations/{donId} {
+        allow read: if isInstitutionAdmin(instId) || (isAuthenticated() && resource.data.userId == request.auth.uid);
+        allow create: if isAuthenticated();
+        allow update: if isInstitutionAdmin(instId);
+      }
+    }
+
+    // Activity Logs
+    match /activityLogs/{logId} {
+      allow read: if isAdmin() && getUserData().institutionId == resource.data.institutionId;
+      allow create: if isAuthenticated();
+    }
+
+    // Collection Group rules (for Donation History)
+    match /{path=**}/foodDonations/{donId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    match /{path=**}/fundDonations/{donId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}

@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, Image, Film, Music, File, Trash2, Download, Loader2, Search, Grid, List, Eye, X } from 'lucide-react';
+import { db, storage } from '../firebase';
+import { collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
 import Input from '../components/Input';
-
-const API_URL = 'http://localhost:3001';
 
 const fileIcons = {
   'application/pdf': { icon: FileText, color: '#ef4444', label: 'PDF' },
@@ -25,13 +27,15 @@ const getFileIcon = (mimetype) => {
 };
 
 const formatSize = (bytes) => {
+  if (!bytes) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const formatDate = (iso) => {
-  const d = new Date(iso);
+const formatDate = (date) => {
+  if (!date) return 'Just now';
+  const d = date.toDate ? date.toDate() : new Date(date);
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
@@ -40,6 +44,7 @@ const isPreviewable = (mimetype) => {
 };
 
 const DocumentsView = () => {
+  const { institutionId, user } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -48,59 +53,107 @@ const DocumentsView = () => {
   const [previewDoc, setPreviewDoc] = useState(null);
   const fileInputRef = useRef(null);
 
-  useEffect(() => { fetchDocuments(); }, []);
+  useEffect(() => {
+    if (!institutionId) return;
 
-  const fetchDocuments = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/documents`);
-      const data = await res.json();
-      if (data.success) setDocuments(data.documents.reverse()); // newest first
-    } catch (err) {
-      console.error('Error fetching documents:', err);
-    } finally {
+    const q = query(
+      collection(db, 'institutions', institutionId, 'documents'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setDocuments(docs);
       setLoading(false);
-    }
-  };
+    }, (err) => {
+      console.error('Error listening to documents:', err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [institutionId]);
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+    if (files.length === 0 || !institutionId) return;
+
     setUploading(true);
     try {
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        await fetch(`${API_URL}/api/documents`, { method: 'POST', body: formData });
+        const fileId = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const storagePath = `institutions/${institutionId}/documents/${fileId}`;
+        const storageRef = ref(storage, storagePath);
+        
+        // 1. Upload to Storage
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+
+        // 2. Add metadata to Firestore
+        await addDoc(collection(db, 'institutions', institutionId, 'documents'), {
+          name: file.name,
+          originalName: file.name,
+          size: file.size,
+          mimetype: file.type,
+          url: url,
+          storagePath: storagePath,
+          createdAt: serverTimestamp(),
+          createdBy: user.uid
+        });
+
+        // 3. Log activity
+        await addDoc(collection(db, 'activityLogs'), {
+          institutionId,
+          userId: user.uid,
+          action: 'UPLOAD_DOCUMENT',
+          fileName: file.name,
+          timestamp: serverTimestamp()
+        });
       }
-      await fetchDocuments();
     } catch (err) {
       console.error('Upload error:', err);
+      alert('Failed to upload some files. Please check your connection.');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleDelete = async (doc) => {
-    if (!window.confirm(`Delete "${doc.originalName}"?`)) return;
+  const handleDelete = async (docData) => {
+    if (!window.confirm(`Permanently delete "${docData.name}"?`)) return;
     try {
-      await fetch(`${API_URL}/api/documents/${doc.id}`, { method: 'DELETE' });
-      setDocuments(prev => prev.filter(d => d.id !== doc.id));
-      if (previewDoc?.id === doc.id) setPreviewDoc(null);
+      // 1. Delete from Storage
+      if (docData.storagePath) {
+        const storageRef = ref(storage, docData.storagePath);
+        await deleteObject(storageRef).catch(e => console.warn('Storage file already gone', e));
+      }
+
+      // 2. Delete from Firestore
+      await deleteDoc(doc(db, 'institutions', institutionId, 'documents', docData.id));
+
+      // 3. Log activity
+      await addDoc(collection(db, 'activityLogs'), {
+        institutionId,
+        userId: user.uid,
+        action: 'DELETE_DOCUMENT',
+        fileName: docData.name,
+        timestamp: serverTimestamp()
+      });
+
+      if (previewDoc?.id === docData.id) setPreviewDoc(null);
     } catch (err) {
       console.error('Delete error:', err);
+      alert('Failed to delete document.');
     }
   };
 
   const filtered = documents.filter(d =>
-    d.originalName?.toLowerCase().includes(searchQuery.toLowerCase())
+    (d.name || d.originalName || '')?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) {
     return (
       <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <Loader2 size={32} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={32} color="var(--primary)" style={{ animation: 'spin 1.8s linear infinite' }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -110,12 +163,12 @@ const DocumentsView = () => {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.5rem' }}>Documents</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: '700' }}>Document Repository</h2>
+        <div style={{ display: 'flex', gap: '0.65rem' }}>
           <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-            style={{ padding: '8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}>
-            {viewMode === 'grid' ? <List size={18} /> : <Grid size={18} />}
+            style={{ padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'white', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', boxShadow: 'var(--shadow-sm)' }}>
+            {viewMode === 'grid' ? <List size={20} /> : <Grid size={20} />}
           </button>
         </div>
       </div>
@@ -123,10 +176,10 @@ const DocumentsView = () => {
       {/* Search */}
       <Input
         icon={Search}
-        placeholder="Search documents..."
+        placeholder="Filter by filename or type..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ marginBottom: '1rem' }}
+        style={{ marginBottom: '1.5rem' }}
       />
 
       {/* Upload area */}
@@ -134,109 +187,110 @@ const DocumentsView = () => {
         onClick={() => !uploading && fileInputRef.current?.click()}
         style={{
           border: '2px dashed var(--primary)', borderRadius: 'var(--radius-lg)',
-          padding: '1.5rem', textAlign: 'center', cursor: uploading ? 'default' : 'pointer',
-          background: 'rgba(59, 130, 246, 0.04)', marginBottom: '1.25rem',
-          transition: 'var(--transition)'
+          padding: '2.5rem 1.5rem', textAlign: 'center', cursor: uploading ? 'default' : 'pointer',
+          background: 'rgba(59, 130, 246, 0.04)', marginBottom: '1.5rem',
+          transition: 'all 0.2s ease', position: 'relative', overflow: 'hidden'
         }}
+        className="hover:bg-blue-50"
       >
         {uploading ? (
-          <Loader2 size={32} color="var(--primary)" style={{ animation: 'spin 1s linear infinite', margin: '0 auto 0.5rem' }} />
+          <Loader2 size={40} color="var(--primary)" style={{ animation: 'spin 1.5s linear infinite', margin: '0 auto 1rem' }} />
         ) : (
-          <Upload size={32} color="var(--primary)" style={{ margin: '0 auto 0.5rem' }} />
+          <Upload size={40} color="var(--primary)" style={{ margin: '0 auto 1rem' }} />
         )}
-        <p style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--primary)', margin: '0 0 0.25rem' }}>
-          {uploading ? 'Uploading...' : 'Tap to upload files'}
+        <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--primary)', margin: '0 0 0.5rem' }}>
+          {uploading ? 'Processing Uploads...' : 'Click or Drag to Upload Documents'}
         </p>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-          PDF, DOC, Images, Videos — Max 20MB
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, opacity: 0.7 }}>
+          Supports PDFs, Records, Photos, and Videos (Up to 100MB)
         </p>
       </div>
       <input ref={fileInputRef} type="file" multiple style={{ display: 'none' }} onChange={handleUpload} />
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '500' }}>
-          {filtered.length} {filtered.length === 1 ? 'file' : 'files'}
-        </span>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>•</span>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          {formatSize(filtered.reduce((sum, d) => sum + (d.size || 0), 0))} total
-        </span>
-      </div>
+      {/* Stats Summary */}
+      {documents.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', padding: '0 4px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', backgroundColor: 'var(--surface)', padding: '4px 12px', borderRadius: '999px' }}>
+            {filtered.length} {filtered.length === 1 ? 'Record' : 'Records'}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600', backgroundColor: 'var(--surface)', padding: '4px 12px', borderRadius: '999px' }}>
+            {formatSize(filtered.reduce((sum, d) => sum + (d.size || 0), 0))} Storage Used
+          </span>
+        </div>
+      )}
 
       {/* File Grid / List */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '2.5rem' }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-muted)' }}>
-            <File size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-            <p>{documents.length === 0 ? 'No documents yet. Upload your first file!' : 'No documents match your search.'}</p>
+          <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)' }}>
+            <div style={{ opacity: 0.2, marginBottom: '1.5rem' }}>
+              <FileText size={80} style={{ margin: '0 auto' }} />
+            </div>
+            <p style={{ fontSize: '1.1rem', fontWeight: '500' }}>
+              {documents.length === 0 ? 'No institutional archives found.' : 'No matches in archives.'}
+            </p>
           </div>
         ) : viewMode === 'grid' ? (
-          /* Grid View */
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-            {filtered.map(doc => {
-              const { icon: Icon, color, label } = getFileIcon(doc.mimetype);
-              const isImage = doc.mimetype?.startsWith('image/');
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
+            {filtered.map(docData => {
+              const { icon: Icon, color, label } = getFileIcon(docData.mimetype);
+              const isImage = docData.mimetype?.startsWith('image/');
               return (
-                <GlassCard key={doc.id} style={{ padding: 0, overflow: 'hidden', cursor: 'pointer', transition: 'var(--transition)' }}
-                  onClick={() => isPreviewable(doc.mimetype) ? setPreviewDoc(doc) : window.open(doc.url, '_blank')}>
-                  {/* Thumbnail */}
-                  <div style={{ height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isImage ? '#f8fafc' : `${color}10`, position: 'relative', overflow: 'hidden' }}>
+                <GlassCard key={docData.id} style={{ padding: 0, overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s ease', position: 'relative' }}
+                  onClick={() => isPreviewable(docData.mimetype) ? setPreviewDoc(docData) : window.open(docData.url, '_blank')}>
+                  <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: isImage ? '#f8fafc' : `${color}08`, position: 'relative', overflow: 'hidden' }}>
                     {isImage ? (
-                      <img src={doc.url} alt={doc.originalName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={docData.url} alt={docData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <Icon size={40} color={color} style={{ opacity: 0.7 }} />
+                      <Icon size={44} color={color} style={{ opacity: 0.6 }} />
                     )}
-                    <span style={{ position: 'absolute', top: '6px', right: '6px', fontSize: '0.55rem', fontWeight: '700', background: color, color: 'white', padding: '2px 6px', borderRadius: '999px', textTransform: 'uppercase' }}>
+                    <span style={{ position: 'absolute', top: '8px', right: '8px', fontSize: '0.6rem', fontWeight: '800', background: color, color: 'white', padding: '3px 8px', borderRadius: '999px', textTransform: 'uppercase', boxShadow: 'var(--shadow-sm)' }}>
                       {label}
                     </span>
                   </div>
-                  {/* Info */}
-                  <div style={{ padding: '0.65rem 0.75rem' }}>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.2rem' }}>
-                      {doc.originalName}
+                  <div style={{ padding: '0.85rem' }}>
+                    <p style={{ fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '0.4rem', color: 'var(--text)' }}>
+                      {docData.name}
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{formatSize(doc.size)}</span>
-                      <div style={{ display: 'flex', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
-                        <a href={doc.url} download={doc.originalName} style={{ color: 'var(--primary)', display: 'flex' }}>
-                          <Download size={14} />
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>{formatSize(docData.size)}</span>
+                      <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                        <a href={docData.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex' }}>
+                          <Download size={16} />
                         </a>
-                        <button onClick={() => handleDelete(doc)} style={{ color: 'var(--danger)', cursor: 'pointer', display: 'flex' }}>
-                          <Trash2 size={14} />
+                        <button onClick={() => handleDelete(docData)} style={{ color: 'var(--danger)', cursor: 'pointer', display: 'flex', background: 'none', border: 'none' }}>
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
-                    <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', opacity: 0.6, marginTop: '0.15rem' }}>{formatDate(doc.uploadedAt)}</p>
                   </div>
                 </GlassCard>
               );
             })}
           </div>
         ) : (
-          /* List View */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {filtered.map(doc => {
-              const { icon: Icon, color, label } = getFileIcon(doc.mimetype);
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {filtered.map(docData => {
+              const { icon: Icon, color, label } = getFileIcon(docData.mimetype);
               return (
-                <GlassCard key={doc.id} style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', gap: '0.75rem', cursor: 'pointer' }}
-                  onClick={() => isPreviewable(doc.mimetype) ? setPreviewDoc(doc) : window.open(doc.url, '_blank')}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={20} color={color} />
+                <GlassCard key={docData.id} style={{ display: 'flex', alignItems: 'center', padding: '1rem', gap: '1rem', cursor: 'pointer' }}
+                  onClick={() => isPreviewable(docData.mimetype) ? setPreviewDoc(docData) : window.open(docData.url, '_blank')}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: 'var(--radius-md)', background: `${color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={24} color={color} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.originalName}</p>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      <span style={{ background: `${color}20`, color, padding: '1px 5px', borderRadius: '4px', fontWeight: '600', fontSize: '0.6rem', marginRight: '6px' }}>{label}</span>
-                      {formatSize(doc.size)} • {formatDate(doc.uploadedAt)}
+                    <p style={{ fontSize: '0.95rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text)' }}>{docData.name}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center' }}>
+                      <span style={{ background: `${color}20`, color, padding: '1px 8px', borderRadius: '999px', fontWeight: '700', fontSize: '0.65rem', marginRight: '8px', textTransform: 'uppercase' }}>{label}</span>
+                      {formatSize(docData.size)} • {formatDate(docData.createdAt)}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                    <a href={doc.url} download={doc.originalName} style={{ color: 'var(--primary)', display: 'flex' }}>
-                      <Download size={18} />
+                  <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                    <a href={docData.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex' }}>
+                      <Download size={20} />
                     </a>
-                    <button onClick={() => handleDelete(doc)} style={{ color: 'var(--danger)', cursor: 'pointer', display: 'flex' }}>
-                      <Trash2 size={18} />
+                    <button onClick={() => handleDelete(docData)} style={{ color: 'var(--danger)', cursor: 'pointer', display: 'flex', background: 'none', border: 'none' }}>
+                      <Trash2 size={20} />
                     </button>
                   </div>
                 </GlassCard>
@@ -248,26 +302,32 @@ const DocumentsView = () => {
 
       {/* Preview Modal */}
       {previewDoc && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.2s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', color: 'white' }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, marginRight: '1rem' }}>
-              {previewDoc.originalName}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 1000, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.2s ease-out', backdropFilter: 'blur(8px)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', color: 'white' }}>
+            <p style={{ fontSize: '1rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, marginRight: '1.5rem' }}>
+              {previewDoc.name}
             </p>
-            <div style={{ display: 'flex', gap: '12px', flexShrink: 0 }}>
-              <a href={previewDoc.url} download={previewDoc.originalName} style={{ color: 'white', display: 'flex' }}>
-                <Download size={22} />
+            <div style={{ display: 'flex', gap: '16px', flexShrink: 0 }}>
+              <a href={previewDoc.url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', display: 'flex' }}>
+                <Download size={24} />
               </a>
-              <button onClick={() => setPreviewDoc(null)} style={{ color: 'white', cursor: 'pointer', display: 'flex' }}>
-                <X size={22} />
+              <button onClick={() => setPreviewDoc(null)} style={{ color: 'white', cursor: 'pointer', display: 'flex', background: 'none', border: 'none' }}>
+                <X size={24} />
               </button>
             </div>
           </div>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem 1rem', overflow: 'auto' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem 1.5rem', overflow: 'auto' }}>
             {previewDoc.mimetype?.startsWith('image/') ? (
-              <img src={previewDoc.url} alt={previewDoc.originalName} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)' }} />
+              <img src={previewDoc.url} alt={previewDoc.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--radius-md)', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
             ) : previewDoc.mimetype === 'application/pdf' ? (
-              <iframe src={previewDoc.url} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white' }} title="PDF Preview" />
-            ) : null}
+              <iframe src={previewDoc.url} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 'var(--radius-md)', background: 'white', maxWidth: '1000px' }} title="PDF Preview" />
+            ) : (
+              <div style={{ textAlign: 'center', color: 'white' }}>
+                <File size={64} style={{ marginBottom: '1rem' }} />
+                <p>Preview not available for this file type.</p>
+                <Button variant="primary" onClick={() => window.open(previewDoc.url, '_blank')} style={{ marginTop: '1.5rem' }}>Open in New Tab</Button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -275,6 +335,7 @@ const DocumentsView = () => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .hover\:bg-blue-50:hover { background-color: rgba(59, 130, 246, 0.08) !important; }
       `}</style>
     </div>
   );

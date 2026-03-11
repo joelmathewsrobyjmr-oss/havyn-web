@@ -58,6 +58,27 @@ const LoginView = () => {
     }
   };
 
+  const { resetPassword } = useAuth();
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await resetPassword(email);
+      setResetSent(true);
+      setTimeout(() => setResetSent(false), 5000);
+    } catch (err) {
+      setError('Failed to send reset email. Check if email is valid.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div 
       style={{
@@ -75,7 +96,7 @@ const LoginView = () => {
     >
       <button 
         onClick={() => navigate('/role')}
-        style={{ position: 'absolute', top: '2rem', left: '2rem', color: 'var(--text-muted)' }}
+        style={{ position: 'absolute', top: '2rem', left: '2rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
       >
         <ArrowLeft size={24} />
       </button>
@@ -107,6 +128,19 @@ const LoginView = () => {
             </div>
           )}
 
+          {resetSent && (
+            <div style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: '#f0fdf4',
+              color: 'var(--success)',
+              fontSize: '0.875rem',
+              border: '1px solid #bbfcbd'
+            }}>
+              Password reset link sent to {email}.
+            </div>
+          )}
+
           <div style={{ position: 'relative' }}>
             <Mail size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
             <Input 
@@ -121,23 +155,48 @@ const LoginView = () => {
             />
           </div>
 
-          <div style={{ position: 'relative' }}>
-            <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
-            <Input 
-              id="password"
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ paddingLeft: '40px' }}
-              required
-            />
-          </div>
+          {!isSignup && (
+            <div style={{ position: 'relative' }}>
+              <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
+              <Input 
+                id="password"
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingLeft: '40px' }}
+                required
+              />
+              <button 
+                type="button"
+                onClick={handleResetPassword}
+                style={{ position: 'absolute', right: 0, top: '4px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+          )}
+
+          {isSignup && (
+            <div style={{ position: 'relative' }}>
+               <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
+                <Input 
+                  id="password"
+                  label="Create Password"
+                  type="password"
+                  placeholder="Min 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ paddingLeft: '40px' }}
+                  required
+                />
+            </div>
+          )}
 
           <Button type="submit" variant="primary" fullWidth style={{ marginTop: '0.5rem', opacity: loading ? 0.7 : 1 }} disabled={loading}>
             {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
                 {isSignup ? 'Creating Account...' : 'Logging In...'}
               </span>
