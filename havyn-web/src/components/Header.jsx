@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings, Camera, Loader2, Maximize2, X, Mail, Shield, Hash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -353,10 +354,8 @@ const Header = ({ toggleSidebar }) => {
         </div>
       </div>
 
-      {/* ════════════════════════════════════════
-          FULL-SCREEN PROFILE MODAL
-      ════════════════════════════════════════ */}
-      {showFullProfile && (
+      {/* FULL-SCREEN PROFILE MODAL — portalled to document.body to escape header stacking context */}
+      {showFullProfile && ReactDOM.createPortal(
         <div
           onClick={() => setShowFullProfile(false)}
           style={{
@@ -475,7 +474,7 @@ const Header = ({ toggleSidebar }) => {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       <style>{`
         @keyframes profileFadeIn {
