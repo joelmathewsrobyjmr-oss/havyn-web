@@ -400,15 +400,41 @@ const ResidentFormView = () => {
             <input ref={aadhaarFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImage', 'aadhaar')} />
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-            <Button type="button" variant="outline" fullWidth onClick={() => navigate('/residents')}>Discard</Button>
-            <Button type="submit" variant="primary" fullWidth disabled={saving || !!uploading} style={{ opacity: (saving || uploading) ? 0.7 : 1 }}>
+          <div style={{ marginTop: '2rem' }}>
+            <Button type="submit" variant="primary" fullWidth disabled={saving || !!uploading}
+              style={{ 
+                opacity: (saving || uploading) ? 0.7 : 1,
+                padding: '18px 0',
+                fontSize: '1.1rem',
+                fontWeight: '700',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 8px 20px rgba(92, 203, 244, 0.4)',
+                letterSpacing: '0.025em'
+              }}>
               {saving ? (
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
+                  <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
                 </span>
-              ) : (isEditing ? 'Update Profile' : 'Save Resident')}
+              ) : (isEditing ? '✔ Update Profile' : '✔ Save Resident')}
             </Button>
+            <button
+              type="button"
+              onClick={() => navigate('/residents')}
+              style={{
+                display: 'block',
+                margin: '1rem auto 0',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-muted)',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: '4px 16px',
+                borderRadius: 'var(--radius-full)',
+                transition: 'color 0.2s'
+              }}>
+              Discard &amp; go back
+            </button>
           </div>
         </form>
       </GlassCard>
