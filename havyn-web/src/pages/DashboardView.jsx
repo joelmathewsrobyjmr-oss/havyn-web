@@ -62,10 +62,11 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
 const DashboardView = () => {
   const navigate = useNavigate();
   const { userData, logout, institutionId } = useAuth();
-  const [stats, setStats] = useState({
+    const [stats, setStats] = useState({
     residents: 0,
     attendanceToday: 0,
-    donationsPending: 0
+    donationsPending: 0,
+    activeRequirements: 0
   });
 
   useEffect(() => {
@@ -79,14 +80,13 @@ const DashboardView = () => {
       setStats(prev => ({ ...prev, residents: snapshot.size }));
     });
 
-    // Fetch Today's Attendance
+    // Fetch Today's Attendance Count
     const today = new Date().toISOString().split('T')[0];
-    const attendanceQuery = query(
-      collection(db, 'institutions', institutionId, 'attendance'),
-      where('date', '==', today),
-      where('status', '==', 'present')
+    const attendanceRecordsQuery = query(
+      collection(db, 'institutions', institutionId, 'attendance', today, 'records'),
+      where('present', '==', true)
     );
-    const unsubAttendance = onSnapshot(attendanceQuery, (snapshot) => {
+    const unsubAttendance = onSnapshot(attendanceRecordsQuery, (snapshot) => {
       setStats(prev => ({ ...prev, attendanceToday: snapshot.size }));
     });
 
@@ -99,10 +99,19 @@ const DashboardView = () => {
       setStats(prev => ({ ...prev, donationsPending: snapshot.size }));
     });
 
+    // Fetch Active Requirements
+    const reqQuery = query(
+      collection(db, 'institutions', institutionId, 'foodRequirements')
+    );
+    const unsubReq = onSnapshot(reqQuery, (snapshot) => {
+      setStats(prev => ({ ...prev, activeRequirements: snapshot.size }));
+    });
+
     return () => {
       unsubResidents();
       unsubAttendance();
       unsubDonations();
+      unsubReq();
     };
   }, [institutionId]);
 
@@ -121,26 +130,32 @@ const DashboardView = () => {
 
       <div style={{ 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
         gap: '1.5rem' 
       }}>
         <StatCard 
           icon={Users} 
-          label="Total Residents" 
+          label="Residents" 
           value={stats.residents} 
           color="var(--primary)" 
         />
         <StatCard 
           icon={CalendarCheck} 
-          label="Attendance Today" 
+          label="Active Presence" 
           value={stats.attendanceToday} 
           color="var(--success)" 
         />
         <StatCard 
           icon={HandHelping} 
-          label="Pending Donations" 
+          label="Pending Booker" 
           value={stats.donationsPending} 
           color="#f59e0b" 
+        />
+        <StatCard 
+          icon={ShoppingBag} 
+          label="Active Needs" 
+          value={stats.activeRequirements} 
+          color="#8b5cf6" 
         />
       </div>
 

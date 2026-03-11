@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Phone, Building2, ArrowRight, Loader2, Globe } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
-import GlassCard from '../components/GlassCard';
-import Input from '../components/Input';
-import Button from '../components/Button';
+import { db } from '../../firebase';
+import GlassCard from '../../components/GlassCard';
+import Input from '../../components/Input';
+import Button from '../../components/Button';
 
 const InstitutionListView = () => {
   const [institutions, setInstitutions] = useState([]);

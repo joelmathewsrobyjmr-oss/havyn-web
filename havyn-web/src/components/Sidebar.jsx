@@ -64,7 +64,15 @@ const Sidebar = () => {
 
       <nav style={{ flex: 1, padding: '0 1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
         {menuItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
+          // Smart active detection per route
+          let isActive = false;
+          if (item.path === '/dashboard') {
+            isActive = location.pathname === '/dashboard';
+          } else if (item.path === '/residents') {
+            isActive = location.pathname.startsWith('/resident');
+          } else {
+            isActive = location.pathname.startsWith(item.path);
+          }
           const Icon = item.icon;
 
           return (

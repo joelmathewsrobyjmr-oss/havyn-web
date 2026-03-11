@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, CalendarDays, Filter, PieChart } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, CalendarDays, Filter, PieChart, Printer } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -148,8 +148,12 @@ const AttendanceReportView = () => {
 
   const filtered = getFilteredReport();
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
+    <div className="print-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
         <button onClick={() => navigate(-1)} style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'white', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -287,9 +291,12 @@ const AttendanceReportView = () => {
           </div>
 
           {/* Export Action */}
-          <div style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 3rem)', maxWidth: '480px', zIndex: 100 }}>
-            <Button variant="outline" fullWidth onClick={downloadCSV} style={{ backgroundColor: 'white', border: '2px solid var(--primary)', color: 'var(--primary)', padding: '14px 0', fontSize: '1rem' }}>
-              <Download size={20} style={{ marginRight: '10px' }} /> Export Attendance Dataset (CSV)
+          <div className="no-print" style={{ position: 'fixed', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 3rem)', maxWidth: '480px', zIndex: 100, display: 'flex', gap: '1rem' }}>
+            <Button variant="outline" fullWidth onClick={handlePrint} style={{ backgroundColor: 'white', border: '2px solid var(--primary)', color: 'var(--primary)', padding: '14px 0', fontSize: '1rem' }}>
+              <Printer size={20} style={{ marginRight: '10px' }} /> Print Report
+            </Button>
+            <Button variant="primary" fullWidth onClick={downloadCSV} style={{ padding: '14px 0', fontSize: '1rem' }}>
+              <Download size={20} style={{ marginRight: '10px' }} /> Export CSV
             </Button>
           </div>
         </>
@@ -298,6 +305,12 @@ const AttendanceReportView = () => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @media print {
+          .no-print { display: none !important; }
+          body * { visibility: hidden; }
+          .print-container, .print-container * { visibility: visible; }
+          .print-container { position: absolute; left: 0; top: 0; width: 100%; }
+        }
       `}</style>
     </div>
   );

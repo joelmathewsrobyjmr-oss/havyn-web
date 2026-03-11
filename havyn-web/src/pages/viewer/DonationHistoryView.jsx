@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { History, Utensils, Heart, ArrowLeft, Loader2, Calendar, ChevronRight } from 'lucide-react';
-import { collectionGroup, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassCard from '../../components/GlassCard';
@@ -39,8 +39,24 @@ const DonationHistoryView = () => {
         institutionId: doc.ref.parent.parent.id 
       }));
 
-      const combined = [...foodList, ...fundList].sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
-      setDonations(combined);
+      const combined = [...foodList, ...fundList].sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      // Resolve institution names
+      const instIds = [...new Set(combined.map(d => d.institutionId))];
+      const instMap = {};
+      
+      await Promise.all(instIds.map(async (id) => {
+        try {
+          const snap = await getDoc(doc(db, 'institutions', id));
+          if (snap.exists()) instMap[id] = snap.data().name;
+        } catch (e) { instMap[id] = 'Unknown Institution'; }
+      }));
+
+      setDonations(combined.map(d => ({ ...d, institutionName: instMap[d.institutionId] || 'Institution' })));
     } catch (err) {
       console.error('Error fetching history:', err);
     } finally {
@@ -88,19 +104,24 @@ const DonationHistoryView = () => {
                   <Icon size={24} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: '700', fontSize: '1.05rem', marginBottom: '0.25rem' }}>
+                  <p style={{ fontWeight: '800', fontSize: '1.1rem', marginBottom: '0.15rem' }}>{donation.institutionName}</p>
+                  <p style={{ fontWeight: '600', fontSize: '0.95rem', color: 'var(--text)', marginBottom: '0.25rem' }}>
                     {isFood ? `Food: ${donation.slotLabel}` : `Fund: ₹${donation.amount}`}
                   </p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Calendar size={14} /> {isFood ? donation.date : formatDate(donation.createdAt)}
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Calendar size={12} /> {isFood ? donation.date : formatDate(donation.createdAt)}
                   </p>
                 </div>
-                <div>
+                <div style={{ textAlign: 'right' }}>
                   <span style={{ 
-                    fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', 
+                    fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', 
                     padding: '4px 10px', borderRadius: '999px',
-                    backgroundColor: donation.status === 'completed' ? 'var(--success-light)' : 'rgba(0,0,0,0.05)',
-                    color: donation.status === 'completed' ? 'var(--success)' : 'var(--text-muted)'
+                    backgroundColor: 
+                      donation.status === 'completed' || donation.status === 'approved' ? 'var(--success)' : 
+                      donation.status === 'pending' ? 'var(--warning)' : 
+                      donation.status === 'rejected' ? 'var(--danger)' : 'rgba(0,0,0,0.05)',
+                    color: 
+                      donation.status === 'completed' || donation.status === 'approved' || donation.status === 'pending' || donation.status === 'rejected' ? 'white' : 'var(--text-muted)'
                   }}>
                     {donation.status}
                   </span>

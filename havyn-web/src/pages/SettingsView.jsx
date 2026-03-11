@@ -357,29 +357,29 @@ const SettingsView = () => {
             <GlassCard style={{ padding: '2rem', textAlign: 'center' }}>
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
-                  <Feather size={40} />
+                  <Building2 size={40} />
                 </div>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', fontFamily: 'serif' }}>HAVYN</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Version 1.2.4 (Beta Production)</p>
+                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', letterSpacing: '-0.02em' }}>HAVYN <span style={{ color: 'var(--primary)' }}>DigiCare</span></h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Version 1.5.0 (Build 2026.03)</p>
               </div>
               
               <div style={{ textAlign: 'left', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>License</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Standard Core</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Administrative Standard</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Engine</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Firebase Firestore</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>Cloud Firestore</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Connection Status</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>System Pulse</span>
                   <span style={{ 
                     fontSize: '0.85rem', fontWeight: '700', color: 'var(--success)',
                     display: 'flex', alignItems: 'center', gap: '5px' 
                   }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)' }} />
-                    Live Sync Active
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', animation: 'pulse 2s infinite' }} />
+                    Operational
                   </span>
                 </div>
               </div>
@@ -391,18 +391,11 @@ const SettingsView = () => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         input:focus, textarea:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
       `}</style>
     </div>
   );
 };
-
-const Feather = ({ size, color }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-    <line x1="16" y1="8" x2="2" y2="22" />
-    <line x1="17.5" y1="15" x2="9" y2="15" />
-  </svg>
-);
 
 export default SettingsView;

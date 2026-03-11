@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --primary: #5ccbf4;
@@ -7,30 +7,37 @@
   --background: #f7f9fc;
   --surface: #ffffff;
   --text-main: #1e293b;
+  --text: #1e293b;          /* alias used throughout components */
   --text-muted: #64748b;
   --success: #10b981;
   --danger: #ef4444;
+  --warning: #f59e0b;
   --border: #e2e8f0;
 
-  /* Shadows for depth */
+  /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-glow: 0 0 15px rgba(92, 203, 244, 0.3);
-  
+
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-full: 9999px;
-  
+
   --font-sans: 'Outfit', sans-serif;
   --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
@@ -41,19 +48,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
 }
 
-/* Mobile App Constraint for Desktop viewing */
+/* Full width root — admin dashboard is a desktop app */
 #root {
   width: 100%;
-  max-width: 480px;
   min-height: 100vh;
-  background-color: var(--surface);
-  position: relative;
-  overflow-x: hidden;
-  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
 }
@@ -72,7 +72,7 @@ button {
   transition: var(--transition);
 }
 
-input {
+input, textarea, select {
   font-family: var(--font-sans);
 }
 
@@ -81,7 +81,14 @@ a {
   text-decoration: none;
 }
 
-/* Utilities */
+/* ── Sidebar ─────────────────────────────────── */
+.sidebar-item:hover {
+  background-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  transform: translateX(3px);
+}
+
+/* ── Utilities ───────────────────────────────── */
 .glass {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
@@ -95,3 +102,45 @@ a {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── Custom Scrollbar ──────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Animations ──────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Print styles ─────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+  #root { box-shadow: none; }
+}
+
+/* ── Responsive: constrain viewer pages on large screens ── */
+.viewer-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  width: 100%;
+}
+

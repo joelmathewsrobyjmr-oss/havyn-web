@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import SplashView from './pages/SplashView';
@@ -68,6 +68,9 @@ function App() {
             <Route path="/viewer/institution/:id/fund" element={<FundDonationView />} />
             <Route path="/viewer/history" element={<DonationHistoryView />} />
           </Route>
+
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

@@ -17,8 +17,10 @@ const FundDonationView = () => {
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
   const [copied, setCopied] = useState(null);
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     const fetchInstitution = async () => {
@@ -43,25 +45,34 @@ const FundDonationView = () => {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const validate = () => {
+    const errs = {};
+    if (!amount || Number(amount) <= 0) errs.amount = 'Please enter a valid amount.';
+    if (!referenceNumber.trim()) errs.ref = 'Required to verify your transaction.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleDonate = async () => {
-    if (!amount || Number(amount) <= 0) return;
+    if (!validate()) return;
     setProcessing(true);
     try {
-      // Mock payment registration
+      // Record donation with reference number
       await addDoc(collection(db, 'institutions', id, 'fundDonations'), {
         userId: user.uid,
         userEmail: user.email,
         amount: Number(amount),
+        referenceNumber: referenceNumber.trim(),
         currency: 'INR',
-        status: 'completed', // Mocking instant success
+        status: 'pending', // Now pending verification by admin
         createdAt: serverTimestamp()
       });
 
       // Create Notification for Admin
       await addDoc(collection(db, 'institutions', id, 'notifications'), {
         type: 'FUND_DONATION',
-        title: 'Fund Contribution Received',
-        message: `${user.email} donated ₹${amount}.`,
+        title: 'New Fund Donation',
+        message: `${user.email} donated ₹${amount}. Ref: ${referenceNumber}`,
         amount: Number(amount),
         read: false,
         createdAt: serverTimestamp()
@@ -127,26 +138,42 @@ const FundDonationView = () => {
         {/* Amount Input */}
         <GlassCard style={{ padding: '2rem', marginBottom: '2rem' }}>
           <label style={{ display: 'block', fontSize: '1rem', fontWeight: '700', marginBottom: '1rem' }}>Enter Contribution Amount (INR)</label>
-          <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-            <span style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: '800', fontSize: '1.5rem', color: 'var(--text-muted)' }}>₹</span>
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
+            <span style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: '800', fontSize: '1.5rem', color: errors.amount ? 'var(--danger)' : 'var(--text-muted)' }}>₹</span>
             <input 
               type="number" 
               placeholder="0.00"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              style={{ width: '100%', padding: '1.25rem 1.25rem 1.25rem 2.75rem', borderRadius: 'var(--radius-lg)', border: '2px solid var(--border)', fontSize: '2rem', fontWeight: '800', outline: 'none', transition: 'border-color 0.2s' }}
+              onChange={(e) => { setAmount(e.target.value); setErrors(p => ({ ...p, amount: '' })); }}
+              style={{ width: '100%', padding: '1.25rem 1.25rem 1.25rem 2.75rem', borderRadius: 'var(--radius-lg)', border: `2px solid ${errors.amount ? 'var(--danger)' : 'var(--border)'}`, fontSize: '2rem', fontWeight: '800', outline: 'none', transition: 'border-color 0.2s' }}
               className="amount-input"
             />
           </div>
+          {errors.amount && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: '600', marginBottom: '1rem' }}>{errors.amount}</p>}
+          
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             {[500, 1000, 2000, 5000].map(val => (
               <button 
                 key={val} 
-                onClick={() => setAmount(val.toString())}
+                onClick={() => { setAmount(val.toString()); setErrors(p => ({ ...p, amount: '' })); }}
                 style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'white', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem' }}
               >+₹{val}</button>
             ))}
           </div>
+        </GlassCard>
+
+        {/* Reference Information */}
+        <GlassCard style={{ padding: '2rem', marginBottom: '2rem', border: `2px solid ${errors.ref ? 'var(--danger)' : 'transparent'}` }}>
+          <label style={{ display: 'block', fontSize: '1rem', fontWeight: '700', marginBottom: '0.5rem' }}>Transaction Reference ID</label>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Paste the UTR or Transaction ID from your payment app here.</p>
+          <Input 
+            icon={CreditCard}
+            placeholder="e.g. 123456789012"
+            value={referenceNumber}
+            onChange={(e) => { setReferenceNumber(e.target.value); setErrors(p => ({ ...p, ref: '' })); }}
+            style={{ marginBottom: '0' }}
+          />
+          {errors.ref && <p style={{ color: 'var(--danger)', fontSize: '0.85rem', fontWeight: '600', marginTop: '0.5rem' }}>{errors.ref}</p>}
         </GlassCard>
 
         {/* Transfer Methods */}
@@ -165,8 +192,8 @@ const FundDonationView = () => {
               </div>
             </div>
             <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
-              <code style={{ fontSize: '1rem', fontWeight: '700' }}>{bankDetails.upiId}</code>
-              <button onClick={() => handleCopy(bankDetails.upiId, 'upi')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
+              <code style={{ fontSize: '1rem', fontWeight: '700' }}>{institution?.upiId || bankDetails.upiId}</code>
+              <button onClick={() => handleCopy(institution?.upiId || bankDetails.upiId, 'upi')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
                 {copied === 'upi' ? <Check size={20} /> : <Copy size={20} />}
               </button>
             </div>
@@ -185,10 +212,10 @@ const FundDonationView = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {[
-                { label: "Bank Name", value: bankDetails.bankName },
-                { label: "Account Name", value: bankDetails.accountName },
-                { label: "Account Number", value: bankDetails.accountNumber },
-                { label: "IFSC Code", value: bankDetails.ifsc }
+                { label: "Bank Name", value: institution?.bankDetails?.bankName || bankDetails.bankName },
+                { label: "Account Name", value: institution?.bankDetails?.accountName || bankDetails.accountName },
+                { label: "Account Number", value: institution?.bankDetails?.accountNumber || bankDetails.accountNumber },
+                { label: "IFSC Code", value: institution?.bankDetails?.ifsc || bankDetails.ifsc }
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.label}</span>
@@ -208,12 +235,12 @@ const FundDonationView = () => {
           variant="primary" 
           fullWidth 
           onClick={handleDonate} 
-          disabled={!amount || Number(amount) <= 0 || processing}
+          disabled={processing}
           style={{ background: '#ec4899', borderColor: '#ec4899', padding: '1.25rem', fontSize: '1.1rem' }}
         >
           {processing ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Submitting Details...
             </span>
           ) : 'I have completed the transfer'}
         </Button>

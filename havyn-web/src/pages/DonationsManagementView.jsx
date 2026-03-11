@@ -40,10 +40,11 @@ const DonationsManagementView = () => {
     };
   }, [institutionId]);
 
-  const updateDonationStatus = async (id, newStatus) => {
+  const updateDonationStatus = async (id, newStatus, type = 'food') => {
     setProcessing(id);
     try {
-      const docRef = doc(db, 'institutions', institutionId, 'foodDonations', id);
+      const collectionName = type === 'food' ? 'foodDonations' : 'fundDonations';
+      const docRef = doc(db, 'institutions', institutionId, collectionName, id);
       await updateDoc(docRef, { 
         status: newStatus,
         updatedAt: serverTimestamp()
@@ -52,8 +53,8 @@ const DonationsManagementView = () => {
       // Log activity
       await addDoc(collection(db, 'activityLogs'), {
         institutionId,
-        action: `FOOD_BOOKING_${newStatus.toUpperCase()}`,
-        details: `Booking ${id} ${newStatus}`,
+        action: `${type.toUpperCase()}_DONATION_${newStatus.toUpperCase()}`,
+        details: `${type} donation ${id} ${newStatus}`,
         timestamp: serverTimestamp()
       });
 
@@ -167,13 +168,47 @@ const DonationsManagementView = () => {
           {fundDonations.length > 0 ? fundDonations.map(donation => (
             <GlassCard key={donation.id} style={{ padding: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ec4899', marginBottom: '0.25rem' }}>₹{donation.amount}</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Received from: {donation.userEmail}</p>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#ec4899' }}>₹{donation.amount}</h3>
+                    <span style={{ 
+                      fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', 
+                      padding: '2px 8px', borderRadius: '999px',
+                      backgroundColor: 
+                        donation.status === 'pending' ? '#fef3c7' : 
+                        donation.status === 'completed' || donation.status === 'approved' ? 'var(--success-light)' : '#fee2e2',
+                      color: 
+                        donation.status === 'pending' ? '#d97706' : 
+                        donation.status === 'completed' || donation.status === 'approved' ? 'var(--success)' : '#ef4444'
+                    }}>
+                      {donation.status || 'COMPLETED'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text)', marginBottom: '0.25rem' }}>
+                    Ref: <code style={{ background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{donation.referenceNumber || 'N/A'}</code>
+                  </p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>From: {donation.userEmail}</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{formatDate(donation.createdAt)}</p>
-                  <span style={{ fontSize: '0.65rem', fontWeight: '800', background: 'var(--success-light)', color: 'var(--success)', padding: '2px 8px', borderRadius: '999px' }}>COMPLETED</span>
+                
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatDate(donation.createdAt)}</p>
+                  
+                  {donation.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => updateDonationStatus(donation.id, 'rejected', 'fund')}
+                        disabled={processing === donation.id}
+                        style={{ padding: '0.4rem 0.6rem', borderRadius: 'var(--radius-md)', border: '1px solid #fee2e2', background: 'white', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700' }}
+                      >Reject</button>
+                      <button 
+                        onClick={() => updateDonationStatus(donation.id, 'approved', 'fund')}
+                        disabled={processing === donation.id}
+                        style={{ padding: '0.4rem 0.8rem', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--success)', color: 'white', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '700' }}
+                      >
+                        {processing === donation.id ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : 'Approve'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </GlassCard>

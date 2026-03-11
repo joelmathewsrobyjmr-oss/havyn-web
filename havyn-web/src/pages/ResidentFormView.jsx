@@ -112,6 +112,15 @@ const ResidentFormView = () => {
     e.preventDefault();
     if (!institutionId) return setError('Institution ID not found');
     
+    // Frontend Validation
+    if (!formData.name.trim()) return setError('Full Name is required.');
+    if (formData.phone && !/^\+?[0-9\s\-()]{7,15}$/.test(formData.phone)) {
+      return setError('Please enter a valid phone number.');
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      return setError('Please enter a valid email address.');
+    }
+
     setSaving(true);
     setError('');
     

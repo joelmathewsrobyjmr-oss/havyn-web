@@ -258,10 +258,11 @@ const DonationReportView = () => {
               </div>
             ) : filtered.map(item => {
               const isFood = item.type === 'food';
-              const statusColor = item.status === 'approved' ? 'var(--success)'
-                : item.status === 'rejected' ? '#ef4444'
-                : item.status === 'pending' ? '#f59e0b'
-                : '#ec4899'; // fund = completed
+              const statusColor = 
+                item.status === 'approved' || item.status === 'completed' ? 'var(--success)'
+                : item.status === 'rejected' ? 'var(--danger)'
+                : item.status === 'pending' ? 'var(--warning)'
+                : '#ec4899';
 
               return (
                 <GlassCard key={item.id} style={{ padding: '1.1rem 1.25rem', marginBottom: '0.75rem', borderLeft: `4px solid ${statusColor}` }}>
