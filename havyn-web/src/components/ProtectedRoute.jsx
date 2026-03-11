@@ -40,6 +40,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
     // Redirect to their respective dashboard if they try to access unauthorized path
     const targetPath = role === 'viewer' ? '/viewer/dashboard' : '/dashboard';
+    
+    // Prevent infinite redirect loops if we are already on the target path or have no role
+    if (location.pathname === targetPath || !role) {
+      return <Navigate to="/role" replace />;
+    }
     return <Navigate to={targetPath} replace />;
   }
 

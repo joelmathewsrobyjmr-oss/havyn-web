@@ -9,7 +9,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -39,16 +39,28 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubUserDoc = null;
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        await fetchUserData(firebaseUser.uid);
+        unsubUserDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSn) => {
+          if (docSn.exists()) {
+            setUserData(docSn.data());
+          } else {
+            setUserData(null);
+          }
+          setLoading(false);
+        });
       } else {
         setUserData(null);
+        setLoading(false);
+        if (unsubUserDoc) unsubUserDoc();
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      if (unsubUserDoc) unsubUserDoc();
+    };
   }, []);
 
   const login = async (email, password) => {
