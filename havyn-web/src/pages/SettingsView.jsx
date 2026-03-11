@@ -193,17 +193,6 @@ const SettingsView = () => {
 
       {!activeSection ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Admin Header */}
-          <GlassCard style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', padding: '1.5rem', background: 'linear-gradient(135deg, white, #f8fafc)' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: 'var(--radius-lg)', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '1.5rem' }}>
-              {userData?.adminName?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: '800' }}>{userData?.adminName || 'Institution Admin'}</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{user?.email}</p>
-            </div>
-          </GlassCard>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
             {menuItems.map(item => (
               <GlassCard key={item.key} onClick={() => setActiveSection(item.key)}
