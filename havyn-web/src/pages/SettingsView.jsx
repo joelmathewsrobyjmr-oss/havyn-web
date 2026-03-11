@@ -22,6 +22,7 @@ const SettingsView = () => {
     address: '',
     phone: '',
     email: '',
+    district: '',
     upiId: '',
     about: '',
     bankDetails: {
@@ -53,6 +54,7 @@ const SettingsView = () => {
           address: data.address || '',
           phone: data.phone || '',
           email: data.email || '',
+          district: data.district || '',
           upiId: data.upiId || '',
           about: data.about || '',
           bankDetails: data.bankDetails || {
@@ -248,6 +250,18 @@ const SettingsView = () => {
               
               <label style={labelStyle}>Official Email</label>
               <input style={inputStyle} value={orgSettings.email} onChange={(e) => setOrgSettings(p => ({ ...p, email: e.target.value }))} placeholder="info@havyn.org" />
+
+              <label style={labelStyle}>Administrative District</label>
+              <select 
+                style={inputStyle} 
+                value={orgSettings.district || ''} 
+                onChange={(e) => setOrgSettings(p => ({ ...p, district: e.target.value }))}
+              >
+                <option value="" disabled>Select District</option>
+                {['Kannur', 'Kozhikode', 'Ernakulam', 'Thrissur', 'Thiruvananthapuram', 'Malappuram', 'Palakkad', 'Kollam', 'Alappuzha', 'Kottayam', 'Idukki', 'Pathanamthitta', 'Wayanad', 'Kasaragod'].map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
 
               <label style={labelStyle}>About the Institution</label>
               <textarea 

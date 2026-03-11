@@ -43,9 +43,15 @@ service cloud.firestore {
         allow read, write: if isInstitutionAdmin(instId);
       }
       
-      // Attendance
-      match /attendance/{atId} {
+      // Attendance records (nested)
+      match /attendance/{atId=**} {
         allow read, write: if isInstitutionAdmin(instId);
+      }
+      
+      // Food Requirements (Public read, admin write)
+      match /foodRequirements/{reqId} {
+        allow read: if isAuthenticated();
+        allow write: if isInstitutionAdmin(instId);
       }
       
       // Documents

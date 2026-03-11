@@ -305,13 +305,41 @@ const AttendanceReportView = () => {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .print-header { display: none; }
+
         @media print {
           .no-print { display: none !important; }
-          body * { visibility: hidden; }
-          .print-container, .print-container * { visibility: visible; }
-          .print-container { position: absolute; left: 0; top: 0; width: 100%; }
+          .glass { border: none !important; box-shadow: none !important; background: white !important; }
+          body { background: white !important; }
+          .print-container { position: static; width: 100%; padding: 0 !important; margin: 0 !important; }
+          .print-header { 
+            display: block !important; 
+            text-align: center; 
+            margin-bottom: 2rem; 
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #eee;
+          }
+          .stats-grid { 
+            display: grid !important; 
+            grid-template-columns: 1fr 1fr 1fr !important; 
+            gap: 10px !important;
+            margin-bottom: 20px !important;
+          }
+          .glass-card { 
+            break-inside: avoid;
+            margin-bottom: 15px !important;
+            border: 1px solid #eee !important;
+          }
         }
       `}</style>
+
+      {/* Print-only Header */}
+      <div className="print-header">
+        <h1 style={{ fontSize: '24pt', fontWeight: '800', margin: '0 0 5pt', fontFamily: 'serif' }}>HAVYN Analytics Report</h1>
+        <p style={{ fontSize: '12pt', color: '#666' }}>Attendance Summary: {startDate} to {endDate}</p>
+        <p style={{ fontSize: '10pt', color: '#999', marginTop: '10pt' }}>Generated on {new Date().toLocaleString()}</p>
+      </div>
     </div>
   );
 };

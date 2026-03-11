@@ -22,13 +22,14 @@ const Sidebar = () => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Users, label: 'Residents', path: '/residents' },
-    { icon: CalendarCheck, label: 'Attendance', path: '/attendance' },
-    { icon: ShoppingBag, label: 'Donations', path: '/donations' },
-    { icon: BarChart3, label: 'Donation Report', path: '/donation-report' },
+    { icon: CalendarCheck, label: 'Daily Presence', path: '/attendance' },
+    { icon: BarChart3, label: 'Attendance Analytics', path: '/attendance-report' },
+    { icon: ShoppingBag, label: 'Donation Desk', path: '/donations' },
+    { icon: FileText, label: 'Donation Report', path: '/donation-report' },
     { icon: Package, label: 'Supply Needs', path: '/requirements' },
-    { icon: FileText, label: 'Documents', path: '/documents' },
-    { icon: Activity, label: 'Activity Logs', path: '/logs' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
+    { icon: FileText, label: 'Institutional Archives', path: '/documents' },
+    { icon: Activity, label: 'Activity Audit', path: '/logs' },
+    { icon: Settings, label: 'System Settings', path: '/settings' },
   ];
 
   return (

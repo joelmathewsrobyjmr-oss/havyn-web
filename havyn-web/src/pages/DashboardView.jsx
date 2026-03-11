@@ -90,13 +90,18 @@ const DashboardView = () => {
       setStats(prev => ({ ...prev, attendanceToday: snapshot.size }));
     });
 
-    // Fetch Pending Donations (Food Bookings)
-    const donationsQuery = query(
-      collection(db, 'institutions', institutionId, 'foodDonations'),
-      where('status', '==', 'pending')
-    );
-    const unsubDonations = onSnapshot(donationsQuery, (snapshot) => {
-      setStats(prev => ({ ...prev, donationsPending: snapshot.size }));
+    // Fetch Pending Donations (Food + Fund)
+    const foodDonQuery = query(collection(db, 'institutions', institutionId, 'foodDonations'), where('status', '==', 'pending'));
+    const fundDonQuery = query(collection(db, 'institutions', institutionId, 'fundDonations'), where('status', '==', 'pending'));
+
+    const unsubFood = onSnapshot(foodDonQuery, (foodSnap) => {
+      // We need to wait for both or just use separate states? 
+      // Let's use separate states for cleaner real-time. Or just a combined total.
+      setStats(prev => ({ ...prev, _foodCount: foodSnap.size, donationsPending: (prev._fundCount || 0) + foodSnap.size }));
+    });
+    
+    const unsubFund = onSnapshot(fundDonQuery, (fundSnap) => {
+      setStats(prev => ({ ...prev, _fundCount: fundSnap.size, donationsPending: (prev._foodCount || 0) + fundSnap.size }));
     });
 
     // Fetch Active Requirements
@@ -110,7 +115,8 @@ const DashboardView = () => {
     return () => {
       unsubResidents();
       unsubAttendance();
-      unsubDonations();
+      unsubFood();
+      unsubFund();
       unsubReq();
     };
   }, [institutionId]);
@@ -147,7 +153,7 @@ const DashboardView = () => {
         />
         <StatCard 
           icon={HandHelping} 
-          label="Pending Booker" 
+          label="Pending Donations" 
           value={stats.donationsPending} 
           color="#f59e0b" 
         />

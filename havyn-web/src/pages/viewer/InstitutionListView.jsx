@@ -11,7 +11,14 @@ const InstitutionListView = () => {
   const [institutions, setInstitutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
   const navigate = useNavigate();
+
+  const districts = [
+    'All Districts', 'Kannur', 'Kozhikode', 'Ernakulam', 'Thrissur', 
+    'Thiruvananthapuram', 'Malappuram', 'Palakkad', 'Kollam', 'Alappuzha', 
+    'Kottayam', 'Idukki', 'Pathanamthitta', 'Wayanad', 'Kasaragod'
+  ];
 
   useEffect(() => {
     const fetchInstitutions = async () => {
@@ -29,10 +36,12 @@ const InstitutionListView = () => {
     fetchInstitutions();
   }, []);
 
-  const filtered = institutions.filter(inst => 
-    inst.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    inst.address?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = institutions.filter(inst => {
+    const matchesSearch = (inst.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         (inst.address || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDistrict = selectedDistrict === 'All Districts' || inst.district === selectedDistrict;
+    return matchesSearch && matchesDistrict;
+  });
 
   if (loading) {
     return (
@@ -55,8 +64,32 @@ const InstitutionListView = () => {
           placeholder="Search by name, location, or type..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ marginBottom: '2rem', padding: '1.25rem' }}
+          style={{ marginBottom: '1.25rem', padding: '1.25rem' }}
         />
+
+        {/* District Selector Chips */}
+        <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1.5rem', scrollbarWidth: 'none' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '700', marginRight: '0.5rem', flexShrink: 0 }}>
+             <MapPin size={16} /> DISTRICT:
+           </div>
+           {districts.map(d => (
+             <button
+               key={d}
+               onClick={() => setSelectedDistrict(d)}
+               style={{
+                 padding: '6px 16px', borderRadius: '999px',
+                 fontSize: '0.8rem', fontWeight: '700', whiteSpace: 'nowrap',
+                 cursor: 'pointer', transition: 'all 0.2s',
+                 background: selectedDistrict === d ? 'var(--primary)' : 'white',
+                 color: selectedDistrict === d ? 'white' : 'var(--text-muted)',
+                 border: selectedDistrict === d ? 'none' : '1px solid var(--border)',
+                 boxShadow: selectedDistrict === d ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
+               }}
+             >
+               {d}
+             </button>
+           ))}
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
           {filtered.length > 0 ? filtered.map(inst => (
