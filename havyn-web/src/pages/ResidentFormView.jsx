@@ -18,6 +18,8 @@ const ResidentFormView = () => {
   const profileCameraRef = useRef(null);
   const aadhaarFileRef = useRef(null);
   const aadhaarCameraRef = useRef(null);
+  const aadhaarBackFileRef = useRef(null);
+  const aadhaarBackCameraRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -29,17 +31,19 @@ const ResidentFormView = () => {
     dob: '',
     admissionDate: '',
     profileImage: '',
-    aadhaarImage: ''
+    aadhaarImage: '',
+    aadhaarImageBack: ''
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState('');
   const [error, setError] = useState('');
   const [showAadhaarMenu, setShowAadhaarMenu] = useState(false);
+  const [showAadhaarBackMenu, setShowAadhaarBackMenu] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Pending files to upload after getting resident ID (for new residents)
-  const [pendingFiles, setPendingFiles] = useState({ profile: null, aadhaar: null });
+  const [pendingFiles, setPendingFiles] = useState({ profile: null, aadhaar: null, aadhaarBack: null });
 
   useEffect(() => {
     if (isEditing && institutionId) loadResident();
@@ -97,6 +101,7 @@ const ResidentFormView = () => {
       } finally {
         setUploading('');
         setShowAadhaarMenu(false);
+        setShowAadhaarBackMenu(false);
         setShowProfileMenu(false);
       }
     } else {
@@ -150,6 +155,7 @@ const ResidentFormView = () => {
         // Prepare data (clear base64 previews)
         if (finalData.profileImage?.startsWith('data:')) finalData.profileImage = '';
         if (finalData.aadhaarImage?.startsWith('data:')) finalData.aadhaarImage = '';
+        if (finalData.aadhaarImageBack?.startsWith('data:')) finalData.aadhaarImageBack = '';
 
         // Add to Firestore
         const docRef = await addDoc(collection(db, 'institutions', institutionId, 'residents'), {
@@ -168,6 +174,10 @@ const ResidentFormView = () => {
         if (pendingFiles.aadhaar) {
           const path = `institutions/${institutionId}/residents/${residentId}/aadhaar_${Date.now()}`;
           updates.aadhaarImage = await uploadFile(pendingFiles.aadhaar, path);
+        }
+        if (pendingFiles.aadhaarBack) {
+          const path = `institutions/${institutionId}/residents/${residentId}/aadhaarBack_${Date.now()}`;
+          updates.aadhaarImageBack = await uploadFile(pendingFiles.aadhaarBack, path);
         }
 
         if (Object.keys(updates).length > 0) {
@@ -349,56 +359,101 @@ const ResidentFormView = () => {
             </div>
           </div>
 
-          {/* Aadhaar Photo Section */}
+          {/* Aadhaar / Identity Card — Front & Back */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'block' }}>
-              <CreditCard size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} /> Aadhaar/Identity Card
+            <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <CreditCard size={14} /> Aadhaar / Identity Card (Front &amp; Back)
             </label>
 
-            {formData.aadhaarImage ? (
-              <div style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', marginTop: '0.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                <img src={formData.aadhaarImage} alt="Identity Card" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '250px', objectFit: 'contain', background: '#f8fafc' }} />
-                <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
-                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, aadhaarImage: '' }))}
-                    style={{ background: 'rgba(220, 38, 38, 0.9)', color: 'white', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ position: 'relative' }}>
-                <div onClick={() => setShowAadhaarMenu(!showAadhaarMenu)}
-                  style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: '2.5rem 1rem', textAlign: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', transition: 'var(--transition)', marginTop: '0.5rem' }}
-                  className="hover:bg-white/20">
-                  {uploading === 'aadhaarImage' ? (
-                    <Loader2 size={36} color="var(--primary)" style={{ animation: 'spin 1s linear infinite', marginBottom: '0.75rem' }} />
-                  ) : (
-                    <Camera size={36} color="var(--text-muted)" style={{ marginBottom: '0.75rem', opacity: 0.6 }} />
-                  )}
-                  <p style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '500', margin: 0 }}>
-                    {uploading === 'aadhaarImage' ? 'Uploading...' : 'Tap to upload ID document'}
-                  </p>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', opacity: 0.5, marginTop: '0.5rem' }}>Front-side photo of Aadhaar Card (Max 10MB)</p>
-                </div>
-                {showAadhaarMenu && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden', zIndex: 20, marginTop: '8px' }}>
-                    <button type="button" onClick={() => aadhaarCameraRef.current?.click()}
-                      style={{ width: '100%', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.95rem', color: 'var(--text)' }}
-                      className="hover:bg-gray-50 transition">
-                      <Camera size={20} color="var(--primary)" /> Take Photo
-                    </button>
-                    <button type="button" onClick={() => aadhaarFileRef.current?.click()}
-                      style={{ width: '100%', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.95rem', color: 'var(--text)' }}
-                      className="hover:bg-gray-50 transition">
-                      <Image size={20} color="var(--success)" /> Choose from Gallery
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+
+              {/* ── FRONT SIDE ── */}
+              <div>
+                <p style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Front Side</p>
+                {formData.aadhaarImage ? (
+                  <div style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <img src={formData.aadhaarImage} alt="ID Front" style={{ width: '100%', height: '160px', objectFit: 'cover', background: '#f8fafc', display: 'block' }} />
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, aadhaarImage: '' }))}
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(220,38,38,0.9)', color: 'white', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
                     </button>
                   </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <div onClick={() => setShowAadhaarMenu(!showAadhaarMenu)}
+                      style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: '2rem 1rem', textAlign: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', transition: 'var(--transition)', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                      {uploading === 'aadhaarImage' ? (
+                        <Loader2 size={28} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
+                      ) : (
+                        <Camera size={28} color="var(--text-muted)" style={{ opacity: 0.6 }} />
+                      )}
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '500', margin: 0 }}>
+                        {uploading === 'aadhaarImage' ? 'Uploading...' : 'Tap to upload front'}
+                      </p>
+                    </div>
+                    {showAadhaarMenu && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden', zIndex: 20, marginTop: '8px' }}>
+                        <button type="button" onClick={() => aadhaarCameraRef.current?.click()}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                          <Camera size={18} color="var(--primary)" /> Take Photo
+                        </button>
+                        <button type="button" onClick={() => aadhaarFileRef.current?.click()}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                          <Image size={18} color="var(--success)" /> Choose from Gallery
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
+                <input ref={aadhaarCameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImage', 'aadhaar')} />
+                <input ref={aadhaarFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImage', 'aadhaar')} />
               </div>
-            )}
-            <input ref={aadhaarCameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImage', 'aadhaar')} />
-            <input ref={aadhaarFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImage', 'aadhaar')} />
+
+              {/* ── BACK SIDE ── */}
+              <div>
+                <p style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Back Side</p>
+                {formData.aadhaarImageBack ? (
+                  <div style={{ position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <img src={formData.aadhaarImageBack} alt="ID Back" style={{ width: '100%', height: '160px', objectFit: 'cover', background: '#f8fafc', display: 'block' }} />
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, aadhaarImageBack: '' }))}
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(220,38,38,0.9)', color: 'white', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <div onClick={() => setShowAadhaarBackMenu(!showAadhaarBackMenu)}
+                      style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-lg)', padding: '2rem 1rem', textAlign: 'center', cursor: 'pointer', background: 'rgba(255,255,255,0.08)', transition: 'var(--transition)', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                      {uploading === 'aadhaarImageBack' ? (
+                        <Loader2 size={28} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
+                      ) : (
+                        <Camera size={28} color="var(--text-muted)" style={{ opacity: 0.6 }} />
+                      )}
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '500', margin: 0 }}>
+                        {uploading === 'aadhaarImageBack' ? 'Uploading...' : 'Tap to upload back'}
+                      </p>
+                    </div>
+                    {showAadhaarBackMenu && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden', zIndex: 20, marginTop: '8px' }}>
+                        <button type="button" onClick={() => aadhaarBackCameraRef.current?.click()}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                          <Camera size={18} color="var(--primary)" /> Take Photo
+                        </button>
+                        <button type="button" onClick={() => aadhaarBackFileRef.current?.click()}
+                          style={{ width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text)' }}>
+                          <Image size={18} color="var(--success)" /> Choose from Gallery
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <input ref={aadhaarBackCameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImageBack', 'aadhaarBack')} />
+                <input ref={aadhaarBackFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload('aadhaarImageBack', 'aadhaarBack')} />
+              </div>
+
+            </div>
           </div>
+
 
           <div style={{ marginTop: '2rem' }}>
             <Button type="submit" variant="primary" fullWidth disabled={saving || !!uploading}
