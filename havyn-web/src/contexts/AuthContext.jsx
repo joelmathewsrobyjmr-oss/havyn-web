@@ -51,6 +51,10 @@ export const AuthProvider = ({ children }) => {
             setUserData(null);
           }
           setLoading(false);
+        }, (err) => {
+          // Rules denied access or network error — don't hang forever
+          console.error('Failed to listen to user doc:', err.code, err.message);
+          setLoading(false);
         });
       } else {
         setUserData(null);
