@@ -220,8 +220,8 @@ const SettingsView = () => {
             ))}
           </div>
 
-          <Button variant="outline" onClick={handleLogout} style={{ marginTop: '1rem', color: 'var(--danger)', borderColor: 'var(--danger)', height: '56px', fontSize: '1rem' }}>
-            <LogOut size={20} style={{ marginRight: '10px' }} /> Log Out from Portal
+          <Button variant="outline-danger" onClick={handleLogout} style={{ marginTop: '1rem', height: '52px', fontSize: '1rem', width: '100%' }}>
+            <LogOut size={20} /> Log Out from Portal
           </Button>
         </div>
       ) : (
@@ -271,8 +271,13 @@ const SettingsView = () => {
                 placeholder="Briefly describe your institution for potential donors..."
               />
 
-              <Button variant="primary" fullWidth onClick={saveOrgSettings} disabled={saving} style={{ height: '50px' }}>
-                {saving ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <><Save size={18} style={{ marginRight: '8px' }} /> Update Profile</>}
+              <Button variant="primary" fullWidth onClick={saveOrgSettings} disabled={saving}
+                style={{ 
+                  padding: '18px 0', fontSize: '1.05rem', fontWeight: '800',
+                  boxShadow: '0 8px 20px rgba(92, 203, 244, 0.35)',
+                  letterSpacing: '0.02em'
+                }}>
+                {saving ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <><Save size={20} /> Update Institution Profile</>}
               </Button>
             </GlassCard>
           )}
@@ -306,8 +311,14 @@ const SettingsView = () => {
                 <input style={inputStyle} value={orgSettings.bankDetails.ifsc} onChange={(e) => setOrgSettings(p => ({ ...p, bankDetails: { ...p.bankDetails, ifsc: e.target.value } }))} placeholder="Bank IFSC" />
               </div>
 
-              <Button variant="primary" fullWidth onClick={saveOrgSettings} disabled={saving} style={{ background: '#ec4899', borderColor: '#ec4899', height: '50px' }}>
-                {saving ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Save Donation Details'}
+              <Button variant="primary" fullWidth onClick={saveOrgSettings} disabled={saving}
+                style={{ 
+                  padding: '18px 0', fontSize: '1.05rem', fontWeight: '800',
+                  background: 'linear-gradient(135deg, #ec4899, #db2777)',
+                  borderColor: '#ec4899',
+                  boxShadow: '0 8px 20px rgba(236, 72, 153, 0.4)'
+                }}>
+                {saving ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <><QrCode size={20} /> Save Donation Details</>}
               </Button>
             </GlassCard>
           )}
@@ -329,8 +340,14 @@ const SettingsView = () => {
               <label style={labelStyle}>Verify New Password</label>
               <input style={inputStyle} type="password" value={passwordData.confirmPassword} onChange={(e) => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))} placeholder="Re-type new password" />
               
-              <Button variant="primary" fullWidth onClick={handleChangePassword} disabled={saving} style={{ background: '#8b5cf6', borderColor: '#8b5cf6', height: '50px' }}>
-                {saving ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Update Secure Credentials'}
+              <Button variant="primary" fullWidth onClick={handleChangePassword} disabled={saving}
+                style={{ 
+                  padding: '18px 0', fontSize: '1.05rem', fontWeight: '800',
+                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                  borderColor: '#8b5cf6',
+                  boxShadow: '0 8px 20px rgba(139, 92, 246, 0.4)'
+                }}>
+                {saving ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <><Shield size={20} /> Update Secure Credentials</>}
               </Button>
             </GlassCard>
           )}
@@ -346,8 +363,12 @@ const SettingsView = () => {
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
                   Download all resident data from your institution as a structured JSON file for your local records.
                 </p>
-                <Button variant="primary" fullWidth onClick={handleExportData} disabled={saving}>
-                  {saving ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : 'Download Resident Database'}
+                <Button variant="primary" fullWidth onClick={handleExportData} disabled={saving}
+                  style={{ 
+                    padding: '16px 0', fontSize: '1rem', fontWeight: '800',
+                    boxShadow: '0 8px 20px rgba(92, 203, 244, 0.3)'
+                  }}>
+                  {saving ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> : <><Download size={20} /> Download Resident Database</>}
                 </Button>
               </GlassCard>
 
@@ -359,8 +380,9 @@ const SettingsView = () => {
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
                   Remove all institutional activity logs. This action is permanent and only clears logs, not core data.
                 </p>
-                <Button variant="outline" fullWidth style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => alert('Log clearing functionality available in enterprise version.')}>
-                  Factory Reset Logs
+                <Button variant="outline-danger" fullWidth onClick={() => alert('Log clearing functionality available in enterprise version.')}
+                  style={{ padding: '16px 0', fontSize: '1rem' }}>
+                  <Trash2 size={20} /> Factory Reset Logs
                 </Button>
               </GlassCard>
             </div>
