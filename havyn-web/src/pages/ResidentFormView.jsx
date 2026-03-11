@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Loader2, Trash2, Camera, Image, CreditCard } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Loader2, Trash2, Camera, Image, CreditCard, Calendar, Activity } from 'lucide-react';
 import { doc, getDoc, setDoc, addDoc, deleteDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../firebase';
@@ -25,6 +25,9 @@ const ResidentFormView = () => {
     phone: '',
     address: '',
     status: 'active',
+    gender: 'male',
+    dob: '',
+    admissionDate: '',
     profileImage: '',
     aadhaarImage: ''
   });
@@ -320,15 +323,30 @@ const ResidentFormView = () => {
             <Input id="address" label="Home Address" icon={MapPin} placeholder="123 Haven Street, Cityville" value={formData.address} onChange={handleChange} />
           </div>
 
-          <div style={{ marginTop: '0.5rem' }}>
-            <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Resident Status</label>
-            <select id="status" value={formData.status} onChange={handleChange}
-              style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', outline: 'none', fontSize: '1rem', fontFamily: 'inherit', cursor: 'pointer', boxSizing: 'border-box', marginBottom: '1rem' }}>
-              <option value="active">Active (Currently Living)</option>
-              <option value="inactive">Inactive</option>
-              <option value="discharged">Discharged</option>
-              <option value="died">Deceased</option>
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
+            <div>
+              <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Gender</label>
+              <select id="gender" value={formData.gender} onChange={handleChange}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', outline: 'none', fontSize: '1rem', fontFamily: 'inherit', cursor: 'pointer', boxSizing: 'border-box' }}>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            
+            <Input id="dob" label="Date of Birth" icon={Calendar} type="date" value={formData.dob} onChange={handleChange} />
+            <Input id="admissionDate" label="Admission Date" icon={Activity} type="date" value={formData.admissionDate} onChange={handleChange} />
+            
+            <div>
+              <label style={{ fontSize: '0.875rem', fontWeight: '500', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'block' }}>Resident Status</label>
+              <select id="status" value={formData.status} onChange={handleChange}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', outline: 'none', fontSize: '1rem', fontFamily: 'inherit', cursor: 'pointer', boxSizing: 'border-box' }}>
+                <option value="active">Active (Currently Living)</option>
+                <option value="inactive">Inactive</option>
+                <option value="discharged">Discharged</option>
+                <option value="died">Deceased</option>
+              </select>
+            </div>
           </div>
 
           {/* Aadhaar Photo Section */}
