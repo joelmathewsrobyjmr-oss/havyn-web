@@ -10,25 +10,13 @@ import GlassCard from '../components/GlassCard';
 
 const ViewerLoginView = () => {
   const navigate = useNavigate();
-  const { login, signup, user, role, loading: authLoading } = useAuth();
+  const { login, signup } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Safe redirect based on loaded user & role
-  React.useEffect(() => {
-    // Only redirect if auth isn't in a mid-load state
-    if (user && role && !authLoading) {
-      if (role === 'viewer') {
-        navigate('/viewer/dashboard');
-      } else if (role === 'admin') {
-        navigate('/dashboard');
-      }
-    }
-  }, [user, role, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,10 +34,11 @@ const ViewerLoginView = () => {
           role: 'viewer',
           createdAt: new Date().toISOString()
         });
-        // Navigation is handled by the useEffect above
+        
+        navigate('/viewer/dashboard');
       } else {
         await login(email, password);
-        // Navigation is handled by the useEffect above
+        navigate('/viewer/dashboard');
       }
     } catch (err) {
       console.error(err);
