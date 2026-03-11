@@ -33,20 +33,50 @@ const AdminRegisterView = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
+    // Explicit required-field check
+    const required = {
+      institutionName: 'Institution Name',
+      adminName: 'Admin Full Name',
+      email: 'Email',
+      contactNumber: 'Contact Number',
+      district: 'District',
+      password: 'Password',
+      confirmPassword: 'Confirm Password'
+    };
+    const missing = Object.entries(required)
+      .filter(([key]) => !formData[key]?.trim())
+      .map(([, label]) => label);
+
+    if (missing.length > 0) {
+      return setError(`Please fill in: ${missing.join(', ')}`);
+    }
+
     if (formData.password !== formData.confirmPassword) {
       return setError('Passwords do not match');
     }
+    if (formData.password.length < 6) {
+      return setError('Password must be at least 6 characters');
+    }
 
     setLoading(true);
-
     try {
-      // 1. Create auth user
+      // 1. Create Firebase Auth user
       const userCredential = await signup(formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Create institution record
       const institutionId = `INST-${Date.now()}`;
+
+      // 2. Create user doc FIRST (so isAdmin() rule passes for institution creation)
+      await setDoc(doc(db, 'users', user.uid), {
+        email: formData.email,
+        adminName: formData.adminName,
+        role: 'admin',
+        institutionId: institutionId,
+        createdAt: new Date().toISOString()
+      });
+
+      // 3. Create institution record (isAdmin() now passes since user doc exists)
       await setDoc(doc(db, 'institutions', institutionId), {
         name: formData.institutionName,
         email: formData.email,
@@ -57,22 +87,22 @@ const AdminRegisterView = () => {
         createdAt: new Date().toISOString()
       });
 
-      // 3. Create user record with role
-      await setDoc(doc(db, 'users', user.uid), {
-        email: formData.email,
-        role: 'admin',
-        institutionId: institutionId,
-        createdAt: new Date().toISOString()
-      });
-
       navigate('/dashboard');
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to create account');
+      // Translate Firebase error codes to friendly messages
+      const msg = {
+        'auth/email-already-in-use': 'This email is already registered. Please log in.',
+        'auth/invalid-email': 'Invalid email address.',
+        'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+        'permission-denied': 'Database permission denied. Please contact support.'
+      }[err.code] || err.message || 'Failed to create account. Please try again.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div 
