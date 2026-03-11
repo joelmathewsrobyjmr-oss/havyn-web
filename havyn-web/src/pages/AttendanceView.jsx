@@ -4,6 +4,7 @@ import { Check, X, Loader2, Download, CalendarDays, Filter } from 'lucide-react'
 import { collection, getDocs, doc, setDoc, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import * as XLSX from 'xlsx';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
 
@@ -270,11 +271,11 @@ const AttendanceView = () => {
       const pct = r.totalDays > 0 ? ((r.presentDays/r.totalDays)*100).toFixed(1)+'%' : '0%';
       return [r.name||'', r.phone||'', r.status||'', ...dates.map(d => r.daily[d]||'--'), r.presentDays, r.absentDays, r.unmarkedDays, pct];
     });
-    const csv = [header,...rows].map(row => row.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `attendance_${startDate}_to_${endDate}.csv`; a.click();
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = header.map(() => ({ wch: 16 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+    XLSX.writeFile(wb, `attendance_${startDate}_to_${endDate}.xlsx`);
   };
 
   if (loading && tab === 'mark') {

@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import ResidentCard from '../components/ResidentCard';
+import * as XLSX from 'xlsx';
 
 const ResidentListView = () => {
   const navigate = useNavigate();
@@ -52,16 +53,11 @@ const ResidentListView = () => {
       r.status || 'active',
       r.admissionDate || r.admission_date || ''
     ]);
-
-    const csvContent = [header, ...rows].map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `residents_list_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = header.map(() => ({ wch: 22 }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Residents');
+    XLSX.writeFile(wb, `residents_list_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (

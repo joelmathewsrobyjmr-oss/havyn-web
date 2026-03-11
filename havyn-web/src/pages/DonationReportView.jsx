@@ -9,6 +9,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
+import * as XLSX from 'xlsx';
 
 const DonationReportView = () => {
   const navigate = useNavigate();
@@ -122,17 +123,11 @@ const DonationReportView = () => {
       const slotOrAmt = item.type === 'food' ? `${item.slotLabel} on ${item.date}` : `₹${item.amount}`;
       return [type, item.userEmail || '', formatDate(item.createdAt), slotOrAmt, item.status || 'completed'];
     });
-
-    const csv = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `donation_report_${startDate}_to_${endDate}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 16 }, { wch: 28 }, { wch: 22 }, { wch: 26 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Donations');
+    XLSX.writeFile(wb, `donation_report_${startDate}_to_${endDate}.xlsx`);
   };
 
   const filtered = getFilteredItems();
