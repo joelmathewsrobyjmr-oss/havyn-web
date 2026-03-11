@@ -17,6 +17,7 @@ const statusColors = {
 /* ─────────── Attendance Row ─────────── */
 const AttendanceRow = ({ resident, onToggle }) => {
   const [animatePresent, setAnimatePresent] = useState(false);
+  const [animateAbsent, setAnimateAbsent] = useState(false);
 
   const handlePresentClick = () => {
     if (resident.present !== true) {
@@ -24,6 +25,14 @@ const AttendanceRow = ({ resident, onToggle }) => {
       setTimeout(() => setAnimatePresent(false), 1200);
     }
     onToggle(resident.id, true);
+  };
+
+  const handleAbsentClick = () => {
+    if (resident.present !== false) {
+      setAnimateAbsent(true);
+      setTimeout(() => setAnimateAbsent(false), 1200);
+    }
+    onToggle(resident.id, false);
   };
 
   return (
@@ -45,7 +54,8 @@ const AttendanceRow = ({ resident, onToggle }) => {
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{resident.status}</p>
       </div>
       <div style={{ display: 'flex', gap: '0.65rem' }}>
-        <div style={{ position: 'relative' }}>
+        {/* Present Button */}
+        <div style={{ position: 'relative', overflow: 'visible' }}>
           <button onClick={handlePresentClick}
             style={{
               width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
@@ -63,29 +73,52 @@ const AttendanceRow = ({ resident, onToggle }) => {
           
           {animatePresent && (
             <div style={{
-              position: 'absolute', top: '0', left: '50%', transform: 'translateX(-50%)',
+              position: 'absolute', top: '50%', right: '110%',
+              transform: 'translateY(-50%)',
               display: 'flex', alignItems: 'center', gap: '4px',
               color: 'var(--success)', fontWeight: '800', fontSize: '0.85rem',
               backgroundColor: 'white', padding: '4px 12px', borderRadius: '999px',
               boxShadow: '0 4px 12px rgba(34,197,94,0.3)', border: '1px solid rgba(34,197,94,0.3)',
-              animation: 'floatUp 1.2s ease-out forwards', pointerEvents: 'none', zIndex: 10
+              animation: 'slideLeft 1.2s ease-out forwards', pointerEvents: 'none', zIndex: 10,
+              whiteSpace: 'nowrap'
             }}>
               <Check size={14} strokeWidth={4} /> Present!
             </div>
           )}
         </div>
-        <button onClick={() => onToggle(resident.id, false)}
-          style={{
-            width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-            backgroundColor: resident.present === false ? 'var(--danger)' : 'white',
-            color: resident.present === false ? 'white' : 'var(--text-muted)',
-            border: `1px solid ${resident.present === false ? 'var(--danger)' : 'var(--border)'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s ease', cursor: 'pointer',
-            boxShadow: resident.present === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
-          }}>
-          <X size={22} strokeWidth={3} />
-        </button>
+
+        {/* Absent Button */}
+        <div style={{ position: 'relative', overflow: 'visible' }}>
+          <button onClick={handleAbsentClick}
+            style={{
+              width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
+              backgroundColor: resident.present === false ? 'var(--danger)' : 'white',
+              color: resident.present === false ? 'white' : 'var(--text-muted)',
+              border: `1px solid ${resident.present === false ? 'var(--danger)' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s ease', cursor: 'pointer',
+              boxShadow: resident.present === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none',
+              transform: animateAbsent ? 'scale(1.1)' : 'scale(1)',
+              zIndex: 2
+            }}>
+            <X size={22} strokeWidth={3} style={{ transform: animateAbsent ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+          </button>
+
+          {animateAbsent && (
+            <div style={{
+              position: 'absolute', top: '50%', right: '110%',
+              transform: 'translateY(-50%)',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              color: 'var(--danger)', fontWeight: '800', fontSize: '0.85rem',
+              backgroundColor: 'white', padding: '4px 12px', borderRadius: '999px',
+              boxShadow: '0 4px 12px rgba(239,68,68,0.3)', border: '1px solid rgba(239,68,68,0.3)',
+              animation: 'slideLeft 1.2s ease-out forwards', pointerEvents: 'none', zIndex: 10,
+              whiteSpace: 'nowrap'
+            }}>
+              <X size={14} strokeWidth={4} /> Absent!
+            </div>
+          )}
+        </div>
       </div>
     </GlassCard>
   );
@@ -447,11 +480,11 @@ pre
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes floatUp {
-          0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
-          20% { opacity: 1; transform: translate(-50%, -25px) scale(1.1); }
-          50% { opacity: 1; transform: translate(-50%, -35px) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -50px) scale(0.9); }
+        @keyframes slideLeft {
+          0%   { opacity: 0; transform: translateY(-50%) translateX(0) scale(0.8); }
+          20%  { opacity: 1; transform: translateY(-50%) translateX(-12px) scale(1.05); }
+          60%  { opacity: 1; transform: translateY(-50%) translateX(-20px) scale(1); }
+          100% { opacity: 0; transform: translateY(-50%) translateX(-36px) scale(0.9); }
         }
       `}</style>
     </div>
