@@ -25,8 +25,8 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
       <TrendingUp size={16} color="var(--success)" />
     </div>
     <div style={{ marginTop: '0.25rem' }}>
-      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{label}</p>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0 }}>{value}</h2>
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{label}</p>
+      <h2 style={{ fontSize: '1.4rem', fontWeight: '700', margin: 0 }}>{value}</h2>
     </div>
   </GlassCard>
 );
@@ -140,7 +140,7 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div className="mobile-horizontal-scroll" style={{ 
+      <div className="mobile-2-col" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
         gap: '1.5rem' 

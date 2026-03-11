@@ -179,6 +179,12 @@ a {
   .mobile-1-col {
     grid-template-columns: 1fr !important;
   }
+  
+  /* Force grids to 2 columns on mobile */
+  .mobile-2-col {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.75rem !important; /* Slightly tighter gap for 2x2 */
+  }
 
   /* Table wrapper for horizontal scroll */
   .table-responsive-wrapper {
