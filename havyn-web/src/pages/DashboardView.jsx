@@ -1,4 +1,6 @@
-import ReactDOM from 'react-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { 
   Users, CalendarCheck, Settings, FileText, LogOut, TrendingUp, 
   HandHelping, ShoppingBag, X, ChevronRight, ArrowUpRight, ArrowDownRight, Clock
@@ -6,7 +8,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import GlassCard from '../components/GlassCard';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, onSnapshot, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
   <GlassCard 
@@ -98,7 +100,7 @@ const StatDetailModal = ({ isOpen, onClose, type, data, color }) => {
 
   const details = getDetails();
 
-  return ReactDOM.createPortal(
+  return createPortal(
     <div 
       style={{
         position: 'fixed',
