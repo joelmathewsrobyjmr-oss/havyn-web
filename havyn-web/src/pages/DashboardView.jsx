@@ -9,31 +9,31 @@ import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestor
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <GlassCard 
     style={{ 
-      padding: '0.75rem 0.5rem', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      gap: '0.25rem',
+      padding: '0.9rem 0.75rem',
+      display: 'flex',
+      flexDirection: 'row',
       alignItems: 'center',
-      textAlign: 'center',
-      minWidth: 0 // allow shrinking
+      gap: '0.65rem',
+      flex: '1 1 0',
+      minWidth: 0
     }}
   >
     <div style={{ 
       backgroundColor: `${color}20`, 
       color: color, 
-      width: '32px',
-      height: '32px',
+      width: '38px',
+      height: '38px',
       borderRadius: 'var(--radius-sm)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0
     }}>
-      <Icon size={16} />
+      <Icon size={20} />
     </div>
-    <div style={{ width: '100%', overflow: 'hidden' }}>
-      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
-      <h2 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>{value}</h2>
+    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '1px' }}>{label}</p>
+      <h2 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, lineHeight: 1 }}>{value}</h2>
     </div>
   </GlassCard>
 );
@@ -147,11 +147,13 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div className="mobile-4-col" style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-        gap: '1.5rem',
-        marginBottom: '1rem'
+      {/* Stats row — always 4 columns side-by-side */}
+      <div style={{ 
+        display: 'flex',
+        flexDirection: 'row',
+        gap: '0.75rem',
+        marginBottom: '1rem',
+        width: '100%'
       }}>
         <StatCard 
           icon={Users} 
@@ -161,13 +163,13 @@ const DashboardView = () => {
         />
         <StatCard 
           icon={CalendarCheck} 
-          label="Active Presence" 
+          label="Attendance" 
           value={stats.attendanceToday} 
           color="var(--success)" 
         />
         <StatCard 
           icon={HandHelping} 
-          label="Pending Donations" 
+          label="Donations" 
           value={stats.donationsPending} 
           color="#f59e0b" 
         />
