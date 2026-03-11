@@ -187,5 +187,24 @@ a {
     -webkit-overflow-scrolling: touch;
     padding-bottom: 0.5rem;
   }
+
+  /* Horizontal scroll wrapper for mobile cards */
+  .mobile-horizontal-scroll {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1rem;
+    scrollbar-width: none; /* Firefox */
+    gap: 1rem !important;
+  }
+  .mobile-horizontal-scroll::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  .mobile-horizontal-scroll > * {
+    flex: 0 0 calc(85vw - 2rem);
+    max-width: 300px;
+  }
 }
 

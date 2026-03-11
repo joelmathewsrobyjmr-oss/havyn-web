@@ -140,7 +140,7 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div className="mobile-1-col" style={{ 
+      <div className="mobile-horizontal-scroll" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
         gap: '1.5rem' 
