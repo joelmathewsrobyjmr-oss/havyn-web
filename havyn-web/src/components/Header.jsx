@@ -1,21 +1,66 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings } from 'lucide-react';
+import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings, Camera, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db, storage } from '../firebase';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+/* ─── Extract dominant colour from an image data URL via Canvas ─── */
+function extractDominantColor(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 50; canvas.height = 50;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 50, 50);
+      const pixels = ctx.getImageData(0, 0, 50, 50).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < pixels.length; i += 4) {
+        const brightness = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+        if (brightness > 20 && brightness < 240) {  // skip near-black and near-white
+          r += pixels[i]; g += pixels[i + 1]; b += pixels[i + 2]; count++;
+        }
+      }
+      if (count === 0) { resolve({ r: 59, g: 130, b: 246 }); return; }
+      resolve({ r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) });
+    };
+    img.onerror = () => resolve({ r: 59, g: 130, b: 246 });
+    img.src = dataUrl;
+  });
+}
 
 const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, institutionId, userData, institutionData } = useAuth();
+  const { logout, institutionId, user, userData, institutionData, updateProfileData } = useAuth();
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [profileGradient, setProfileGradient] = useState('linear-gradient(135deg, #1e40af, #3b82f6)');
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+  const photoInputRef = useRef(null);
   const isHome = location.pathname === '/dashboard';
+
+  // Compute gradient from existing photo on mount / photo change
+  const adminPhotoUrl = userData?.adminPhotoUrl || null;
+
+  useEffect(() => {
+    if (adminPhotoUrl) {
+      extractDominantColor(adminPhotoUrl).then(({ r, g, b }) => {
+        const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
+        setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
+      });
+    } else {
+      setProfileGradient('linear-gradient(135deg, #1e3a8a, #2563eb)');
+    }
+  }, [adminPhotoUrl]);
 
   useEffect(() => {
     if (!institutionId) return;
@@ -63,11 +108,34 @@ const Header = ({ toggleSidebar }) => {
     } catch (err) { console.error(err); }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Photo must be under 5MB.'); return; }
+
+    setUploadingPhoto(true);
+    try {
+      const storageRef = ref(storage, `admins/${user.uid}/profile_${Date.now()}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await updateProfileData(user.uid, { adminPhotoUrl: url });
+
+      // Extract and apply gradient immediately
+      const { r, g, b } = await extractDominantColor(url);
+      const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
+      setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const adminInitial = (institutionData?.name || userData?.adminName || 'A').charAt(0).toUpperCase();
 
   return (
     <header className="glass" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--border)', backgroundColor: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)' }}>
-      {/* Left: hamburger + logo */}
+      {/* Left */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button className="show-on-mobile" onClick={toggleSidebar} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
           <Menu size={24} />
@@ -83,21 +151,19 @@ const Header = ({ toggleSidebar }) => {
         </div>
       </div>
 
-      {/* Right: notifications + profile */}
+      {/* Right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
 
-        {/* 🔔 Notifications bell */}
+        {/* 🔔 Notifications */}
         <div style={{ position: 'relative' }} ref={notifRef}>
           <button
             onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }}
-            style={{ color: showNotif ? 'var(--primary)' : 'var(--text-muted)', position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex' }}
-          >
+            style={{ color: showNotif ? 'var(--primary)' : 'var(--text-muted)', position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex' }}>
             <Bell size={22} />
             {unreadCount > 0 && (
               <span style={{ position: 'absolute', top: '0px', right: '0px', width: '10px', height: '10px', backgroundColor: 'var(--danger)', borderRadius: '50%', border: '2px solid white' }} />
             )}
           </button>
-
           {showNotif && (
             <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '1rem', width: '320px', maxHeight: '450px', backgroundColor: 'white', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
@@ -129,78 +195,120 @@ const Header = ({ toggleSidebar }) => {
           )}
         </div>
 
-        {/* 👤 Admin Profile Avatar */}
+        {/* 👤 Admin Avatar button with ring */}
         <div style={{ position: 'relative' }} ref={profileRef}>
           <button
             onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }}
             title="Admin Profile"
             style={{
-              width: '36px', height: '36px', borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--primary), #3b82f6)',
-              color: 'white', fontWeight: '800', fontSize: '0.95rem',
-              border: showProfile ? '2px solid var(--primary)' : '2px solid transparent',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: showProfile ? '0 0 0 3px rgba(92,203,244,0.3)' : '0 2px 8px rgba(92,203,244,0.4)',
-              transition: 'all 0.2s ease'
+              width: '42px', height: '42px', borderRadius: '50%',
+              padding: '0', border: 'none', cursor: 'pointer',
+              /* gradient ring via box-shadow */
+              boxShadow: showProfile
+                ? '0 0 0 3px white, 0 0 0 5px var(--primary), 0 4px 12px rgba(37,99,235,0.4)'
+                : '0 0 0 3px white, 0 0 0 5px rgba(37,99,235,0.5)',
+              transition: 'all 0.2s ease',
+              overflow: 'hidden',
+              background: adminPhotoUrl ? 'transparent' : profileGradient,
+              flexShrink: 0
             }}
           >
-            {adminInitial}
+            {adminPhotoUrl ? (
+              <img src={adminPhotoUrl} alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ) : (
+              <span style={{ color: 'white', fontWeight: '800', fontSize: '1.1rem' }}>{adminInitial}</span>
+            )}
           </button>
 
           {showProfile && (
             <div style={{
-              position: 'absolute', top: 'calc(100% + 12px)', right: '0',
-              width: '280px', backgroundColor: 'white',
+              position: 'absolute', top: 'calc(100% + 14px)', right: '0',
+              width: '320px', backgroundColor: 'white',
               borderRadius: 'var(--radius-lg)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-              border: '1px solid var(--border)', overflow: 'hidden',
+              boxShadow: '0 24px 48px rgba(0,0,0,0.14)',
+              border: '1px solid var(--border)',
+              overflow: 'hidden',
               animation: 'profileFadeIn 0.2s ease-out',
               zIndex: 200
             }}>
-              {/* Gradient header */}
-              <div style={{ background: 'linear-gradient(135deg, var(--primary), #3b82f6)', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: '800', fontSize: '1.3rem', flexShrink: 0 }}>
-                  {adminInitial}
+
+              {/* ── GRADIENT HEADER ── */}
+              <div style={{ background: profileGradient, padding: '1.5rem 1.25rem 2.5rem', position: 'relative' }}>
+                {/* Avatar with ring + upload overlay */}
+                <div style={{ position: 'relative', width: '68px', height: '68px', margin: '0 auto 0.75rem' }}>
+                  <div style={{
+                    width: '68px', height: '68px', borderRadius: '50%',
+                    border: '3px solid rgba(255,255,255,0.9)',
+                    boxShadow: '0 0 0 3px rgba(255,255,255,0.3)',
+                    overflow: 'hidden',
+                    background: 'rgba(255,255,255,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {uploadingPhoto ? (
+                      <Loader2 size={24} color="white" style={{ animation: 'spin 1s linear infinite' }} />
+                    ) : adminPhotoUrl ? (
+                      <img src={adminPhotoUrl} alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ color: 'white', fontWeight: '800', fontSize: '1.75rem' }}>{adminInitial}</span>
+                    )}
+                  </div>
+
+                  {/* Camera overlay to upload */}
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    style={{
+                      position: 'absolute', bottom: '0', right: '0',
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      background: 'white', border: '2px solid rgba(255,255,255,0.6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    <Camera size={13} color="#1e3a8a" />
+                  </button>
+                  <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
                 </div>
-                <div style={{ overflow: 'hidden' }}>
-                  <p style={{ color: 'white', fontWeight: '800', fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: 'white', fontWeight: '800', fontSize: '1.1rem', marginBottom: '2px' }}>
                     {institutionData?.name || 'Institution'}
                   </p>
-                  <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.75rem' }}>
+                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem' }}>
                     {userData?.adminName || 'Admin'}
                   </p>
                 </div>
               </div>
 
-              {/* Details */}
-              <div style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', marginBottom: '1rem' }}>
+              {/* ── DETAIL ROWS ── */}
+              <div style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.1rem' }}>
                   {[
                     { label: 'Email', value: userData?.email || '—' },
                     { label: 'Role', value: userData?.role || 'admin', highlight: true },
                     { label: 'Institution ID', value: institutionId || '—', small: true },
                   ].map(row => (
-                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
-                      <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>{row.label}</span>
+                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.85rem' }}>{row.label}</span>
                       <span style={{
                         fontWeight: row.highlight ? '800' : '600',
                         color: row.highlight ? 'var(--primary)' : 'var(--text)',
-                        fontSize: row.small ? '0.7rem' : '0.82rem',
+                        fontSize: row.small ? '0.72rem' : '0.88rem',
                         textTransform: row.highlight ? 'capitalize' : 'none',
-                        maxWidth: '155px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        maxWidth: '175px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>{row.value}</span>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.9rem' }}>
                   <button onClick={() => { navigate('/settings'); setShowProfile(false); }}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', borderRadius: 'var(--radius-md)', background: 'var(--background)', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', width: '100%' }}>
-                    <Settings size={16} color="var(--primary)" /> Settings
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.7rem 0.85rem', borderRadius: 'var(--radius-md)', background: 'var(--background)', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', color: 'var(--text)', width: '100%', textAlign: 'left' }}>
+                    <Settings size={17} color="var(--primary)" /> Settings
                   </button>
                   <button onClick={handleLogout}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', borderRadius: 'var(--radius-md)', background: '#fff5f5', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', color: 'var(--danger)', width: '100%' }}>
-                    <LogOut size={16} /> Log Out
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.7rem 0.85rem', borderRadius: 'var(--radius-md)', background: '#fff5f5', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600', color: 'var(--danger)', width: '100%', textAlign: 'left' }}>
+                    <LogOut size={17} /> Log Out
                   </button>
                 </div>
               </div>
@@ -211,9 +319,10 @@ const Header = ({ toggleSidebar }) => {
 
       <style>{`
         @keyframes profileFadeIn {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          from { opacity: 0; transform: translateY(-10px) scale(0.96); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </header>
   );
