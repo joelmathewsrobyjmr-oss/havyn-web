@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        setLoading(true);
         unsubUserDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSn) => {
           if (docSn.exists()) {
             setUserData(docSn.data());
