@@ -15,52 +15,81 @@ const statusColors = {
 };
 
 /* ─────────── Attendance Row ─────────── */
-const AttendanceRow = ({ resident, onToggle }) => (
-  <GlassCard style={{ display: 'flex', alignItems: 'center', padding: '1rem', marginBottom: '0.75rem' }}>
-    <div style={{
-      width: '44px', height: '44px', borderRadius: '50%',
-      backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: '600', marginRight: '1rem', flexShrink: 0, overflow: 'hidden',
-      border: `2px solid ${statusColors[resident.status] || 'var(--primary-light)'}`,
-      boxShadow: 'var(--shadow-sm)'
-    }}>
-      {resident.profileImage ? (
-        <img src={resident.profileImage} alt={resident.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : (resident.name?.charAt(0) || '?')}
-    </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <h4 style={{ fontSize: '1rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resident.name}</h4>
-      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{resident.status}</p>
-    </div>
-    <div style={{ display: 'flex', gap: '0.65rem' }}>
-      <button onClick={() => onToggle(resident.id, true)}
-        style={{
-          width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-          backgroundColor: resident.present === true ? 'var(--success)' : 'white',
-          color: resident.present === true ? 'white' : 'var(--text-muted)',
-          border: `1px solid ${resident.present === true ? 'var(--success)' : 'var(--border)'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.2s ease', cursor: 'pointer',
-          boxShadow: resident.present === true ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none'
-        }}>
-        <Check size={22} strokeWidth={3} />
-      </button>
-      <button onClick={() => onToggle(resident.id, false)}
-        style={{
-          width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-          backgroundColor: resident.present === false ? 'var(--danger)' : 'white',
-          color: resident.present === false ? 'white' : 'var(--text-muted)',
-          border: `1px solid ${resident.present === false ? 'var(--danger)' : 'var(--border)'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.2s ease', cursor: 'pointer',
-          boxShadow: resident.present === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
-        }}>
-        <X size={22} strokeWidth={3} />
-      </button>
-    </div>
-  </GlassCard>
-);
+const AttendanceRow = ({ resident, onToggle }) => {
+  const [animatePresent, setAnimatePresent] = useState(false);
+
+  const handlePresentClick = () => {
+    if (resident.present !== true) {
+      setAnimatePresent(true);
+      setTimeout(() => setAnimatePresent(false), 1200);
+    }
+    onToggle(resident.id, true);
+  };
+
+  return (
+    <GlassCard style={{ display: 'flex', alignItems: 'center', padding: '1rem', marginBottom: '0.75rem' }}>
+      <div style={{
+        width: '44px', height: '44px', borderRadius: '50%',
+        backgroundColor: 'var(--primary-light)', color: 'var(--primary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: '600', marginRight: '1rem', flexShrink: 0, overflow: 'hidden',
+        border: `2px solid ${statusColors[resident.status] || 'var(--primary-light)'}`,
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        {resident.profileImage ? (
+          <img src={resident.profileImage} alt={resident.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (resident.name?.charAt(0) || '?')}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h4 style={{ fontSize: '1rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resident.name}</h4>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{resident.status}</p>
+      </div>
+      <div style={{ display: 'flex', gap: '0.65rem' }}>
+        <div style={{ position: 'relative' }}>
+          <button onClick={handlePresentClick}
+            style={{
+              width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
+              backgroundColor: resident.present === true ? 'var(--success)' : 'white',
+              color: resident.present === true ? 'white' : 'var(--text-muted)',
+              border: `1px solid ${resident.present === true ? 'var(--success)' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s ease', cursor: 'pointer',
+              boxShadow: resident.present === true ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
+              transform: animatePresent ? 'scale(1.1)' : 'scale(1)',
+              zIndex: 2
+            }}>
+            <Check size={22} strokeWidth={3} style={{ transform: animatePresent ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }} />
+          </button>
+          
+          {animatePresent && (
+            <div style={{
+              position: 'absolute', top: '0', left: '50%', transform: 'translateX(-50%)',
+              display: 'flex', alignItems: 'center', gap: '4px',
+              color: 'var(--success)', fontWeight: '800', fontSize: '0.85rem',
+              backgroundColor: 'white', padding: '4px 12px', borderRadius: '999px',
+              boxShadow: '0 4px 12px rgba(34,197,94,0.3)', border: '1px solid rgba(34,197,94,0.3)',
+              animation: 'floatUp 1.2s ease-out forwards', pointerEvents: 'none', zIndex: 10
+            }}>
+              <Check size={14} strokeWidth={4} /> Present!
+            </div>
+          )}
+        </div>
+        <button onClick={() => onToggle(resident.id, false)}
+          style={{
+            width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
+            backgroundColor: resident.present === false ? 'var(--danger)' : 'white',
+            color: resident.present === false ? 'white' : 'var(--text-muted)',
+            border: `1px solid ${resident.present === false ? 'var(--danger)' : 'var(--border)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s ease', cursor: 'pointer',
+            boxShadow: resident.present === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none'
+          }}>
+          <X size={22} strokeWidth={3} />
+        </button>
+      </div>
+    </GlassCard>
+  );
+};
 
 /* ─────────── Main View ─────────── */
 const AttendanceView = () => {
@@ -418,6 +447,12 @@ pre
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes floatUp {
+          0% { opacity: 0; transform: translate(-50%, 0) scale(0.8); }
+          20% { opacity: 1; transform: translate(-50%, -25px) scale(1.1); }
+          50% { opacity: 1; transform: translate(-50%, -35px) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -50px) scale(0.9); }
+        }
       `}</style>
     </div>
   );
