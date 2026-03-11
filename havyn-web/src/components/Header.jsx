@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings, Camera, Loader2, Maximize2, X, Mail, Shield, Hash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../firebase';
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '../firebase';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 
 /* ─── Extract dominant colour from an image data URL via Canvas ─── */
 function extractDominantColor(dataUrl) {
@@ -49,8 +48,8 @@ const Header = ({ toggleSidebar }) => {
   const photoInputRef = useRef(null);
   const isHome = location.pathname === '/dashboard';
 
-  // Compute gradient from existing photo on mount / photo change
-  const adminPhotoUrl = userData?.adminPhotoUrl || null;
+  // Use base64 stored directly in Firestore (no Firebase Storage needed)
+  const adminPhotoUrl = userData?.adminPhotoBase64 || null;
 
   useEffect(() => {
     if (adminPhotoUrl) {
@@ -109,57 +108,50 @@ const Header = ({ toggleSidebar }) => {
     } catch (err) { console.error(err); }
   };
 
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file || !user) { console.warn('No file or user'); return; }
-    if (file.size > 5 * 1024 * 1024) { alert('Photo must be under 5MB.'); return; }
-    if (photoInputRef.current) photoInputRef.current.value = '';
+  /* ── Compress image on canvas → base64 → save to Firestore (no Storage needed) ── */
+  const compressToBase64 = (file, maxPx = 256, quality = 0.78) => new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const scale = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = objectUrl;
+  });
 
-    // Read local file as data URL for canvas colour extraction (avoids CORS)
-    let localDataUrl = null;
-    try {
-      localDataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = ev => resolve(ev.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    } catch (err) {
-      console.error('FileReader error:', err);
-    }
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 8 * 1024 * 1024) { alert('Photo must be under 8MB.'); return; }
+    if (photoInputRef.current) photoInputRef.current.value = '';
 
     setUploadingPhoto(true);
     try {
-      // Use institution path — this is covered by existing Storage rules
-      const path = institutionId
-        ? `institutions/${institutionId}/adminPhoto/${user.uid}_${Date.now()}`
-        : `users/${user.uid}/adminPhoto_${Date.now()}`;
+      // Compress to ~256px JPEG base64 — typically 30-60 KB, well within Firestore 1MB limit
+      const base64 = await compressToBase64(file);
 
-      console.log('[AdminPhoto] Uploading to:', path);
-      const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file);
-      console.log('[AdminPhoto] Upload complete, getting URL…');
-      const url = await getDownloadURL(storageRef);
-      console.log('[AdminPhoto] URL obtained, saving to Firestore…');
-      await updateProfileData(user.uid, { adminPhotoUrl: url });
-      console.log('[AdminPhoto] Saved to Firestore successfully');
+      // Save to Firestore users/{uid} — no Storage needed
+      await updateProfileData(user.uid, { adminPhotoBase64: base64 });
 
-      // Apply gradient from local data URL — fire-and-forget (won't block spinner clear)
-      if (localDataUrl) {
-        extractDominantColor(localDataUrl).then(({ r, g, b }) => {
-          const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
-          setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
-        }).catch(() => {});
-      }
+      // Extract gradient colour fire-and-forget
+      extractDominantColor(base64).then(({ r, g, b }) => {
+        const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
+        setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
+      }).catch(() => {});
     } catch (err) {
-      console.error('[AdminPhoto] Upload failed:', err);
-      alert(`Failed to upload photo: ${err.message || err.code || 'Unknown error'}. Check Firebase Storage rules.`);
+      console.error('[AdminPhoto] Failed:', err);
+      alert('Failed to save photo. Please try again.');
     } finally {
       setUploadingPhoto(false);
     }
   };
-
-
   const adminInitial = (institutionData?.name || userData?.adminName || 'A').charAt(0).toUpperCase();
 
   return (
