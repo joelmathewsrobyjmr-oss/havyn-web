@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings, Camera, Loader2 } from 'lucide-react';
+import { Menu, Feather, Bell, ArrowLeft, LogOut, Clock, Settings, Camera, Loader2, Maximize2, X, Mail, Shield, Hash } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, writeBatch, setDoc } from 'firebase/firestore';
@@ -41,6 +41,7 @@ const Header = ({ toggleSidebar }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showFullProfile, setShowFullProfile] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [profileGradient, setProfileGradient] = useState('linear-gradient(135deg, #1e40af, #3b82f6)');
   const notifRef = useRef(null);
@@ -262,6 +263,21 @@ const Header = ({ toggleSidebar }) => {
 
               {/* ── GRADIENT HEADER ── */}
               <div style={{ background: profileGradient, padding: '1.5rem 1.25rem 2.5rem', position: 'relative' }}>
+                {/* Expand button — top-left */}
+                <button
+                  onClick={() => { setShowFullProfile(true); setShowProfile(false); }}
+                  title="View full profile"
+                  style={{
+                    position: 'absolute', top: '10px', left: '10px',
+                    width: '26px', height: '26px', borderRadius: '6px',
+                    background: 'rgba(255,255,255,0.2)', border: '1.5px solid rgba(255,255,255,0.4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', backdropFilter: 'blur(6px)', transition: 'all 0.2s'
+                  }}
+                >
+                  <Maximize2 size={13} color="white" />
+                </button>
+
                 {/* Avatar with ring + upload overlay */}
                 <div style={{ position: 'relative', width: '68px', height: '68px', margin: '0 auto 0.75rem' }}>
                   <div style={{
@@ -345,15 +361,149 @@ const Header = ({ toggleSidebar }) => {
         </div>
       </div>
 
+      {/* ════════════════════════════════════════
+          FULL-SCREEN PROFILE MODAL
+      ════════════════════════════════════════ */}
+      {showFullProfile && (
+        <div
+          onClick={() => setShowFullProfile(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(5, 10, 30, 0.75)',
+            backdropFilter: 'blur(18px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fullProfileBg 0.35s ease-out'
+          }}
+        >
+          {/* Card — stop click propagation */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: 'min(400px, 92vw)',
+              background: 'white',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              boxShadow: '0 40px 80px rgba(0,0,0,0.4)',
+              animation: 'fullProfileEntry 0.4s cubic-bezier(0.34,1.56,0.64,1)'
+            }}
+          >
+            {/* Gradient top section */}
+            <div style={{ background: profileGradient, padding: '2.5rem 1.5rem 3rem', position: 'relative', textAlign: 'center' }}>
+              {/* Close button */}
+              <button
+                onClick={() => setShowFullProfile(false)}
+                style={{
+                  position: 'absolute', top: '14px', right: '14px',
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.2)', border: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', backdropFilter: 'blur(4px)'
+                }}
+              >
+                <X size={16} color="white" />
+              </button>
+
+              {/* Rotating ring avatar */}
+              <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 1.25rem' }}>
+                {/* The rotating conic-gradient ring */}
+                <div style={{
+                  position: 'absolute', inset: '-6px',
+                  borderRadius: '50%',
+                  background: 'conic-gradient(from 0deg, rgba(255,255,255,0.9), rgba(255,255,255,0.1), rgba(255,255,255,0.9))',
+                  animation: 'ringRotate 2.5s linear infinite'
+                }} />
+                {/* White gap ring */}
+                <div style={{
+                  position: 'absolute', inset: '-2px',
+                  borderRadius: '50%',
+                  background: 'white',
+                  zIndex: 1
+                }} />
+                {/* Avatar */}
+                <div style={{
+                  position: 'absolute', inset: '4px',
+                  borderRadius: '50%', overflow: 'hidden',
+                  background: profileGradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 2
+                }}>
+                  {adminPhotoUrl ? (
+                    <img src={adminPhotoUrl} alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ color: 'white', fontWeight: '900', fontSize: '2.75rem' }}>{adminInitial}</span>
+                  )}
+                </div>
+              </div>
+
+              <h2 style={{ color: 'white', fontWeight: '900', fontSize: '1.5rem', margin: '0 0 4px' }}>
+                {institutionData?.name || 'Institution'}
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.95rem', margin: 0 }}>
+                {userData?.adminName || 'Admin'}
+              </p>
+            </div>
+
+            {/* Detail section */}
+            <div style={{ padding: '1.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                {[
+                  { icon: Mail, label: 'Email', value: userData?.email || '—' },
+                  { icon: Shield, label: 'Role', value: userData?.role || 'admin', highlight: true },
+                  { icon: Hash, label: 'Institution ID', value: institutionId || '—', mono: true },
+                ].map(row => (
+                  <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', padding: '0.85rem 1rem', background: '#f8fafc', borderRadius: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--primary-light, rgba(59,130,246,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <row.icon size={17} color="var(--primary)" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 2px' }}>{row.label}</p>
+                      <p style={{
+                        fontSize: row.mono ? '0.78rem' : '0.92rem',
+                        fontWeight: row.highlight ? '800' : '600',
+                        color: row.highlight ? 'var(--primary)' : 'var(--text)',
+                        textTransform: row.highlight ? 'capitalize' : 'none',
+                        fontFamily: row.mono ? 'monospace' : 'inherit',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0
+                      }}>{row.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button onClick={() => { navigate('/settings'); setShowFullProfile(false); }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0.8rem', borderRadius: '12px', background: 'var(--background)', border: '1.5px solid var(--border)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '700', color: 'var(--text)' }}>
+                  <Settings size={17} color="var(--primary)" /> Settings
+                </button>
+                <button onClick={handleLogout}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '0.8rem', borderRadius: '12px', background: '#fff5f5', border: '1.5px solid #fecaca', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '700', color: 'var(--danger)' }}>
+                  <LogOut size={17} /> Log Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes profileFadeIn {
           from { opacity: 0; transform: translateY(-10px) scale(0.96); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes ringRotate { to { transform: rotate(360deg); } }
+        @keyframes fullProfileBg {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes fullProfileEntry {
+          from { opacity: 0; transform: scale(0.7) translateY(40px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
       `}</style>
     </header>
   );
 };
 
 export default Header;
+
