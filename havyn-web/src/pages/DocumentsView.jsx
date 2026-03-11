@@ -4,12 +4,11 @@ import {
   Loader2, Search, Grid, List, X, FolderPlus, Folder, FolderOpen,
   ArrowLeft, Plus, ChevronRight
 } from 'lucide-react';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import {
   collection, addDoc, deleteDoc, doc, query, orderBy,
   onSnapshot, serverTimestamp, setDoc, getDocs
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
@@ -122,13 +121,26 @@ const DocumentsView = () => {
     }
   };
 
-  /* ── Upload files ── */
-  const handleUpload = (e) => {
+  /* ── Upload files (Directly to Firestore as base64) ── */
+  const handleUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0 || !institutionId) return;
     if (fileInputRef.current) fileInputRef.current.value = '';
 
-    const initialQueue = files.map(f => ({ name: f.name, progress: 0, done: false, error: false }));
+    // Firestore has a 1MB document limit. Base64 adds ~33% overhead.
+    // Safe limit: 700 KB per file
+    const MAX_SIZE = 700 * 1024;
+    const validFiles = [];
+    for (const f of files) {
+      if (f.size > MAX_SIZE) {
+        alert(`File "${f.name}" is too large (max 700KB for direct storage). Please upload a smaller file.`);
+      } else {
+        validFiles.push(f);
+      }
+    }
+    if (validFiles.length === 0) return;
+
+    const initialQueue = validFiles.map(f => ({ name: f.name, progress: 0, done: false, error: false }));
     setUploadQueue(initialQueue);
     setIsUploading(true);
 
@@ -136,59 +148,54 @@ const DocumentsView = () => {
       ? collection(db, 'institutions', institutionId, 'folders', currentFolder.id, 'files')
       : collection(db, 'institutions', institutionId, 'documents');
 
-    const storagePfx = currentFolder
-      ? `institutions/${institutionId}/folders/${currentFolder.id}`
-      : `institutions/${institutionId}/documents`;
-
     let completed = 0;
-    files.forEach((file, idx) => {
-      const fileId = `${Date.now()}_${idx}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      const storageRef = ref(storage, `${storagePfx}/${fileId}`);
-      const task = uploadBytesResumable(storageRef, file);
 
-      task.on('state_changed',
-        (snapshot) => {
-          const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-          setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, progress: pct } : q));
-        },
-        (err) => {
-          console.error('Upload error:', err);
-          setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, error: true, done: true } : q));
-          completed++;
-          if (completed === files.length) setIsUploading(false);
-        },
-        async () => {
-          const url = await getDownloadURL(task.snapshot.ref);
-          await addDoc(collPath, {
-            name: file.name,
-            size: file.size,
-            mimetype: file.type,
-            url,
-            storagePath: `${storagePfx}/${fileId}`,
-            createdAt: serverTimestamp(),
-            createdBy: user.uid,
-            folderId: currentFolder?.id || null
-          });
-          setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, progress: 100, done: true } : q));
-          completed++;
-          if (completed === files.length) {
-            setTimeout(() => {
-              setIsUploading(false);
-              setUploadQueue([]);
-            }, 1200);
-          }
-        }
-      );
-    });
+    for (let idx = 0; idx < validFiles.length; idx++) {
+      const file = validFiles[idx];
+      try {
+        setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, progress: 30 } : q));
+        
+        // Convert file to base64
+        const base64Url = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, progress: 80 } : q));
+
+        // Save directly to Firestore Document
+        await addDoc(collPath, {
+          name: file.name,
+          size: file.size,
+          mimetype: file.type,
+          url: base64Url,
+          createdAt: serverTimestamp(),
+          createdBy: user.uid,
+          folderId: currentFolder?.id || null
+        });
+
+        setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, progress: 100, done: true } : q));
+      } catch (err) {
+        console.error('Upload error:', err);
+        setUploadQueue(prev => prev.map((q, i) => i === idx ? { ...q, error: true, done: true } : q));
+      }
+
+      completed++;
+      if (completed === validFiles.length) {
+        setTimeout(() => {
+          setIsUploading(false);
+          setUploadQueue([]);
+        }, 1200);
+      }
+    }
   };
 
   /* ── Delete file ── */
   const handleDelete = async (docData) => {
     if (!window.confirm(`Permanently delete "${docData.name}"?`)) return;
     try {
-      if (docData.storagePath) {
-        await deleteObject(ref(storage, docData.storagePath)).catch(() => {});
-      }
       const collPath = currentFolder
         ? doc(db, 'institutions', institutionId, 'folders', currentFolder.id, 'files', docData.id)
         : doc(db, 'institutions', institutionId, 'documents', docData.id);
@@ -206,8 +213,6 @@ const DocumentsView = () => {
     try {
       const filesSnap = await getDocs(collection(db, 'institutions', institutionId, 'folders', folder.id, 'files'));
       for (const fd of filesSnap.docs) {
-        const data = fd.data();
-        if (data.storagePath) await deleteObject(ref(storage, data.storagePath)).catch(() => {});
         await deleteDoc(fd.ref);
       }
       await deleteDoc(doc(db, 'institutions', institutionId, 'folders', folder.id));
