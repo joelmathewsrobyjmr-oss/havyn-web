@@ -7,11 +7,12 @@ const Input = ({
   fullWidth = true,
   className = '',
   icon: Icon,
-  style = {},
+  style = {},       // applied to outer wrapper div
+  inputStyle = {},  // applied to <input> element directly
   ...props 
 }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: fullWidth ? '100%' : 'auto', marginBottom: '0.75rem' }} className={className}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: fullWidth ? '100%' : 'auto', marginBottom: '0.75rem', ...style }} className={className}>
       {label && (
         <label 
           htmlFor={id} 
@@ -20,12 +21,12 @@ const Input = ({
           {label}
         </label>
       )}
-      <div style={{ position: 'relative', width: '100%' }}>
+      <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
         {Icon && (
           <Icon 
             size={18} 
             color="var(--text-muted)" 
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none' }} 
+            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 1, pointerEvents: 'none', lineHeight: 1 }} 
           />
         )}
         <input
@@ -43,7 +44,8 @@ const Input = ({
             transition: 'var(--transition)',
             boxShadow: 'var(--shadow-sm)',
             boxSizing: 'border-box',
-            ...style
+            lineHeight: '1.5',
+            ...inputStyle
           }}
           onFocus={(e) => {
             e.target.style.borderColor = 'var(--primary)';
@@ -64,3 +66,4 @@ const Input = ({
 };
 
 export default Input;
+
