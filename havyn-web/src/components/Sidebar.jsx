@@ -133,36 +133,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         })}
       </nav>
 
-      <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border)' }}>
-        <div style={{ 
-          background: 'var(--surface)', 
-          padding: '1rem', 
-          borderRadius: 'var(--radius-lg)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
-        }}>
-          <div style={{ 
-            width: '36px', 
-            height: '36px', 
-            borderRadius: '50%', 
-            background: 'var(--primary)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: 'white',
-            fontWeight: '700'
-          }}>
-            {userData?.adminName?.charAt(0) || 'A'}
-          </div>
-          <div style={{ overflow: 'hidden' }}>
-            <p style={{ fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {userData?.adminName || 'Admin'}
-            </p>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Administrator</p>
-          </div>
-        </div>
-      </div>
+
+
     </aside>
 
       {/* Add CSS for the sidebar desktop/mobile toggle via injected styles or generic classes. */}
