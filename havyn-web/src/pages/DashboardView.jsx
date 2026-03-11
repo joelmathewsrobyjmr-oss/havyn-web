@@ -12,11 +12,15 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
       <div style={{ 
         backgroundColor: `${color}20`, 
         color: color, 
-        padding: '0.50rem', 
+        width: '46px',
+        height: '46px',
         borderRadius: 'var(--radius-md)',
-        display: 'flex'
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
       }}>
-        <Icon size={20} />
+        <Icon size={24} />
       </div>
       <TrendingUp size={16} color="var(--success)" />
     </div>
@@ -42,12 +46,14 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
     <div 
       style={{ 
         backgroundColor: color, 
-        padding: '0.75rem', 
+        width: '46px',
+        height: '46px', 
         borderRadius: 'var(--radius-md)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'white'
+        color: 'white',
+        flexShrink: 0
       }}
     >
       <Icon size={24} />
