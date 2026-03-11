@@ -63,27 +63,17 @@ const ResidentListView = () => {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.5s ease-out' }}>
       
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.75rem', fontWeight: '700' }}>Institution Residents</h2>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <Button 
-            variant="outline" 
-            style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-            onClick={downloadCSV}
-            disabled={residents.length === 0}
-          >
-            <Download size={18} style={{ marginRight: '6px' }} />
-            Export
-          </Button>
-          <Button 
-            variant="primary" 
-            style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-            onClick={() => navigate('/resident/new')}
-          >
-            <Plus size={18} style={{ marginRight: '6px' }} />
-            Add Resident
-          </Button>
-        </div>
+        <Button 
+          variant="primary" 
+          style={{ padding: '14px 28px', fontSize: '1rem', fontWeight: '700', boxShadow: '0 6px 18px rgba(92,203,244,0.35)', letterSpacing: '0.02em' }}
+          onClick={() => navigate('/resident/new')}
+        >
+          <Plus size={20} style={{ marginRight: '8px' }} />
+          Add Resident
+        </Button>
       </div>
 
       <Input 
@@ -94,7 +84,7 @@ const ResidentListView = () => {
         style={{ marginBottom: '1.5rem' }}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '2rem' }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem' }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
             <Loader2 size={36} color="var(--primary)" style={{ animation: 'spin 1.8s linear infinite' }} />
@@ -124,6 +114,29 @@ const ResidentListView = () => {
         )}
       </div>
 
+      {/* Export button — footer, centered, outline only (stroke, no fill) */}
+      <div style={{ paddingTop: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+        <button
+          onClick={downloadCSV}
+          disabled={residents.length === 0}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '11px 28px',
+            fontSize: '0.95rem', fontWeight: '700',
+            color: residents.length === 0 ? 'var(--text-muted)' : 'var(--primary)',
+            background: 'transparent',
+            border: `2px solid ${residents.length === 0 ? 'var(--border)' : 'var(--primary)'}`,
+            borderRadius: 'var(--radius-md)',
+            cursor: residents.length === 0 ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+            opacity: residents.length === 0 ? 0.5 : 1
+          }}
+        >
+          <Download size={18} />
+          Export to Excel
+        </button>
+      </div>
+
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -135,6 +148,7 @@ const ResidentListView = () => {
       `}</style>
     </div>
   );
+
 };
 
 export default ResidentListView;
