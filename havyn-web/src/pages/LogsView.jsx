@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Activity, Clock, User, Info, Loader2 } from 'lucide-react';
@@ -9,19 +9,34 @@ const LogsView = () => {
   const { institutionId } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!institutionId) return;
 
+    // Fetch without orderBy/limit to avoid requiring a Firestore composite index
     const q = query(
       collection(db, 'activityLogs'),
-      where('institutionId', '==', institutionId),
-      orderBy('timestamp', 'desc'),
-      limit(50)
+      where('institutionId', '==', institutionId)
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // Sort descending by timestamp client-side
+      data.sort((a, b) => {
+        const timeA = a.timestamp?.seconds || 0;
+        const timeB = b.timestamp?.seconds || 0;
+        return timeB - timeA;
+      });
+      
+      // Limit to latest 50
+      setLogs(data.slice(0, 50));
+      setLoading(false);
+      setError(null);
+    }, (err) => {
+      console.error("Error fetching logs:", err);
+      setError(err.message);
       setLoading(false);
     });
 
@@ -29,9 +44,10 @@ const LogsView = () => {
   }, [institutionId]);
 
   const getActionColor = (action) => {
-    if (action.includes('CREATE') || action.includes('ADD') || action.includes('BOOK')) return 'var(--success)';
-    if (action.includes('DELETE') || action.includes('REJECT')) return 'var(--danger)';
-    if (action.includes('UPDATE') || action.includes('APPROVE')) return 'var(--primary)';
+    if (!action) return 'var(--text-muted)';
+    if (action.includes('CREATE') || action.includes('ADD') || action.includes('BOOK') || action.includes('REGISTER')) return 'var(--success)';
+    if (action.includes('DELETE') || action.includes('REJECT') || action.includes('REMOVE')) return 'var(--danger)';
+    if (action.includes('UPDATE') || action.includes('APPROVE') || action.includes('EDIT')) return 'var(--primary)';
     return 'var(--text-muted)';
   };
 
@@ -57,6 +73,11 @@ const LogsView = () => {
         <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem 0' }}>
           <Loader2 size={40} color="var(--primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
         </div>
+      ) : error ? (
+        <div style={{ padding: '1.5rem', background: '#fef2f2', color: '#dc2626', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }}>
+          <h3 style={{ fontWeight: '700', marginBottom: '0.5rem' }}>Failed to load activity logs</h3>
+          <p style={{ fontSize: '0.85rem' }}>{error}</p>
+        </div>
       ) : logs.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {logs.map(log => (
@@ -71,7 +92,7 @@ const LogsView = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text)' }}>{log.action.replace(/_/g, ' ')}</span>
+                  <span style={{ fontWeight: '700', fontSize: '0.9rem', color: 'var(--text)' }}>{(log.action || 'UNKNOWN_ACTION').replace(/_/g, ' ')}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     <Clock size={12} /> {formatTime(log.timestamp)}
                   </span>
@@ -79,7 +100,7 @@ const LogsView = () => {
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{log.details}</p>
                 {log.userId && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600' }}>
-                    <User size={12} /> Donor ID: {log.userId.slice(-6)}
+                    <User size={12} /> User ID: {log.userId.slice(-6)}
                   </div>
                 )}
               </div>
