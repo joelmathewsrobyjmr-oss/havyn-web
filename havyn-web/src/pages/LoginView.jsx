@@ -10,11 +10,10 @@ const LoginView = () => {
   const [searchParams] = useSearchParams();
   const role = searchParams.get('role') || 'admin';
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignup, setIsSignup] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,11 +23,7 @@ const LoginView = () => {
     setLoading(true);
 
     try {
-      if (isSignup) {
-        await signup(email, password);
-      } else {
-        await login(email, password);
-      }
+      await login(email, password);
       navigate('/dashboard');
     } catch (err) {
       let message = 'Something went wrong. Please try again.';
@@ -103,12 +98,10 @@ const LoginView = () => {
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '0.5rem' }}>
-          {isSignup ? 'Create Account' : 'Welcome Back'}
+          Welcome Back
         </h1>
         <p style={{ color: 'var(--text-muted)' }}>
-          {isSignup 
-            ? `Sign up for a new ${role} account` 
-            : `Log in to your ${role.charAt(0).toUpperCase() + role.slice(1)} account`}
+          Log in to your {role.charAt(0).toUpperCase() + role.slice(1)} account
         </p>
       </div>
 
@@ -155,65 +148,49 @@ const LoginView = () => {
             />
           </div>
 
-          {!isSignup && (
-            <div style={{ position: 'relative' }}>
-              <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
-              <Input 
-                id="password"
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingLeft: '40px' }}
-                required
-              />
-              <button 
-                type="button"
-                onClick={handleResetPassword}
-                style={{ position: 'absolute', right: 0, top: '4px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
-              >
-                Forgot Password?
-              </button>
-            </div>
-          )}
-
-          {isSignup && (
-            <div style={{ position: 'relative' }}>
-               <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
-                <Input 
-                  id="password"
-                  label="Create Password"
-                  type="password"
-                  placeholder="Min 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingLeft: '40px' }}
-                  required
-                />
-            </div>
-          )}
+          <div style={{ position: 'relative' }}>
+            <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '38px', zIndex: 1 }} />
+            <Input 
+              id="password"
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ paddingLeft: '40px' }}
+              required
+            />
+            <button 
+              type="button"
+              onClick={handleResetPassword}
+              style={{ position: 'absolute', right: 0, top: '4px', background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+            >
+              Forgot Password?
+            </button>
+          </div>
 
           <Button type="submit" variant="primary" fullWidth style={{ marginTop: '0.5rem', opacity: loading ? 0.7 : 1 }} disabled={loading}>
             {loading ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                {isSignup ? 'Creating Account...' : 'Logging In...'}
+                Logging In...
               </span>
             ) : (
-              isSignup ? 'Sign Up' : 'Log In'
+              'Log In'
             )}
           </Button>
 
-          <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-            <button 
-              type="button"
-              onClick={() => { setIsSignup(!isSignup); setError(''); }}
-              style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: '500' }}
-            >
-              {isSignup ? 'Already have an account? Log In' : "Don't have an account? Sign Up"}
-            </button>
-          </div>
+          {role === 'admin' && (
+            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+              <button 
+                type="button"
+                onClick={() => navigate('/admin/register')}
+                style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: '500', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                Don't have an account? Register your institution
+              </button>
+            </div>
+          )}
         </form>
       </GlassCard>
       
