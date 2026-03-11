@@ -110,38 +110,54 @@ const Header = ({ toggleSidebar }) => {
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file || !user) return;
+    if (!file || !user) { console.warn('No file or user'); return; }
     if (file.size > 5 * 1024 * 1024) { alert('Photo must be under 5MB.'); return; }
-    // Reset input so same file can be re-selected after an error
     if (photoInputRef.current) photoInputRef.current.value = '';
 
-    // Read the local file as a data URL BEFORE uploading (avoids CORS canvas issue)
-    const localDataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = ev => resolve(ev.target.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    // Read local file as data URL for canvas colour extraction (avoids CORS)
+    let localDataUrl = null;
+    try {
+      localDataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = ev => resolve(ev.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    } catch (err) {
+      console.error('FileReader error:', err);
+    }
 
     setUploadingPhoto(true);
     try {
-      const storageRef = ref(storage, `admins/${user.uid}/profile_${Date.now()}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await updateProfileData(user.uid, { adminPhotoUrl: url });
+      // Use institution path — this is covered by existing Storage rules
+      const path = institutionId
+        ? `institutions/${institutionId}/adminPhoto/${user.uid}_${Date.now()}`
+        : `users/${user.uid}/adminPhoto_${Date.now()}`;
 
-      // Apply gradient from the local data URL (same-origin, canvas-safe) — fire-and-forget
-      extractDominantColor(localDataUrl).then(({ r, g, b }) => {
-        const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
-        setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
-      }).catch(() => { /* keep default gradient */ });
+      console.log('[AdminPhoto] Uploading to:', path);
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, file);
+      console.log('[AdminPhoto] Upload complete, getting URL…');
+      const url = await getDownloadURL(storageRef);
+      console.log('[AdminPhoto] URL obtained, saving to Firestore…');
+      await updateProfileData(user.uid, { adminPhotoUrl: url });
+      console.log('[AdminPhoto] Saved to Firestore successfully');
+
+      // Apply gradient from local data URL — fire-and-forget (won't block spinner clear)
+      if (localDataUrl) {
+        extractDominantColor(localDataUrl).then(({ r, g, b }) => {
+          const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
+          setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
+        }).catch(() => {});
+      }
     } catch (err) {
-      console.error('Photo upload failed:', err);
-      alert('Failed to upload photo. Please try again.');
+      console.error('[AdminPhoto] Upload failed:', err);
+      alert(`Failed to upload photo: ${err.message || err.code || 'Unknown error'}. Check Firebase Storage rules.`);
     } finally {
       setUploadingPhoto(false);
     }
   };
+
 
   const adminInitial = (institutionData?.name || userData?.adminName || 'A').charAt(0).toUpperCase();
 

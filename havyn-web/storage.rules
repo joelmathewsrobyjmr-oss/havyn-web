@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper: check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Institution files (residents, documents, admin photos)
+    match /institutions/{instId}/{allPaths=**} {
+      // Allow authenticated users to read/write within their own institution
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    // Admin profile photos stored under users/ (fallback path)
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && request.auth.uid == userId;
+    }
+
+    // Deny all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
