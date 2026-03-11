@@ -71,8 +71,9 @@ export const AuthProvider = ({ children }) => {
 
   // Fetch institution data whenever institutionId changes
   useEffect(() => {
+    let isSubscribed = true;
     if (!userData?.institutionId) {
-      setInstitutionData(null);
+      if (isSubscribed) setInstitutionData(null);
       return;
     }
     const unsubInst = onSnapshot(doc(db, 'institutions', userData.institutionId), (snap) => {

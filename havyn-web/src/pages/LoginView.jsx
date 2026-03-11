@@ -10,7 +10,7 @@ const LoginView = () => {
   const [searchParams] = useSearchParams();
   const urlRole = searchParams.get('role') || 'admin';
   const navigate = useNavigate();
-  const { user, role: authRole, loading: authLoading, login } = useAuth();
+  const { user, role: authRole, loading: authLoading, login, resetPassword } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,7 +65,6 @@ const LoginView = () => {
     }
   };
 
-  const { resetPassword } = useAuth();
   const [resetSent, setResetSent] = useState(false);
 
   const handleResetPassword = async () => {

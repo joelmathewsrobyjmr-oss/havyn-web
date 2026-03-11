@@ -10,7 +10,7 @@ import GlassCard from '../components/GlassCard';
 
 const ViewerLoginView = () => {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, user, role, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,8 +18,6 @@ const ViewerLoginView = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { user, role, loading: authLoading } = useAuth();
-  
   // Safe redirect based on loaded user & role
   React.useEffect(() => {
     // Only redirect if auth isn't in a mid-load state
