@@ -25,6 +25,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
+  const [institutionData, setInstitutionData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (uid) => {
@@ -62,6 +63,19 @@ export const AuthProvider = ({ children }) => {
       if (unsubUserDoc) unsubUserDoc();
     };
   }, []);
+
+  // Fetch institution data whenever institutionId changes
+  useEffect(() => {
+    if (!userData?.institutionId) {
+      setInstitutionData(null);
+      return;
+    }
+    const unsubInst = onSnapshot(doc(db, 'institutions', userData.institutionId), (snap) => {
+      if (snap.exists()) setInstitutionData(snap.data());
+      else setInstitutionData(null);
+    });
+    return () => unsubInst();
+  }, [userData?.institutionId]);
 
   const login = async (email, password) => {
     return signInWithEmailAndPassword(auth, email, password);
@@ -101,7 +115,8 @@ export const AuthProvider = ({ children }) => {
 
   const value = { 
     user, 
-    userData, 
+    userData,
+    institutionData,
     role,
     institutionId,
     loading, 

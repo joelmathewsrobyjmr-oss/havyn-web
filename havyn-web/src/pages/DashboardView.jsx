@@ -7,26 +7,33 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
-  <GlassCard style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ 
-        backgroundColor: `${color}20`, 
-        color: color, 
-        width: '46px',
-        height: '46px',
-        borderRadius: 'var(--radius-md)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0
-      }}>
-        <Icon size={24} />
-      </div>
-      <TrendingUp size={16} color="var(--success)" />
+  <GlassCard 
+    style={{ 
+      padding: '0.75rem 0.5rem', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '0.25rem',
+      alignItems: 'center',
+      textAlign: 'center',
+      minWidth: 0 // allow shrinking
+    }}
+  >
+    <div style={{ 
+      backgroundColor: `${color}20`, 
+      color: color, 
+      width: '32px',
+      height: '32px',
+      borderRadius: 'var(--radius-sm)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0
+    }}>
+      <Icon size={16} />
     </div>
-    <div style={{ marginTop: '0.25rem' }}>
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{label}</p>
-      <h2 style={{ fontSize: '1.4rem', fontWeight: '700', margin: 0 }}>{value}</h2>
+    <div style={{ width: '100%', overflow: 'hidden' }}>
+      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
+      <h2 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0 }}>{value}</h2>
     </div>
   </GlassCard>
 );
@@ -67,7 +74,7 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
 
 const DashboardView = () => {
   const navigate = useNavigate();
-  const { userData, logout, institutionId } = useAuth();
+  const { userData, logout, institutionId, institutionData } = useAuth();
     const [stats, setStats] = useState({
     residents: 0,
     attendanceToday: 0,
@@ -132,7 +139,7 @@ const DashboardView = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem', fontWeight: '700' }}>
-            Hello, {userData?.adminName || 'Admin'}
+            Hello, {institutionData?.name || userData?.adminName || 'Admin'} 👋
           </h1>
           <p style={{ color: 'var(--text-muted)' }}>
             Here's what's happening at your institution today.
@@ -140,10 +147,11 @@ const DashboardView = () => {
         </div>
       </div>
 
-      <div className="mobile-2-col" style={{ 
+      <div className="mobile-4-col" style={{ 
         display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-        gap: '1.5rem' 
+        gap: '1.5rem',
+        marginBottom: '1rem'
       }}>
         <StatCard 
           icon={Users} 
