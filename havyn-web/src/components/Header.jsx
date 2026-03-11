@@ -43,7 +43,7 @@ const Header = ({ toggleSidebar }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [profileGradient, setProfileGradient] = useState('linear-gradient(135deg, #2563eb, #60a5fa)');
+  const [profileGradient, setProfileGradient] = useState('linear-gradient(135deg, #3b82f6, #93c5fd)');
   const notifRef = useRef(null);
   const profileRef = useRef(null);
   const photoInputRef = useRef(null);
@@ -59,7 +59,7 @@ const Header = ({ toggleSidebar }) => {
         setProfileGradient(`linear-gradient(135deg, ${darker}, rgb(${r},${g},${b}))`);
       });
     } else {
-      setProfileGradient('linear-gradient(135deg, #2563eb, #60a5fa)');
+      setProfileGradient('linear-gradient(135deg, #3b82f6, #93c5fd)');
     }
   }, [adminPhotoUrl]);
 
