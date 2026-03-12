@@ -1,5 +1,4 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -38,6 +37,30 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    // If we have a user but no role yet (could be just signed up), 
+    // we should show a loading state instead of a blank screen.
+    if (!role) {
+      return (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          color: 'var(--primary)'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }} />
+        </div>
+      );
+    }
+
     // Redirect to their respective dashboard if they try to access unauthorized path
     const targetPath = role === 'viewer' ? '/viewer/dashboard' : '/dashboard';
     
@@ -48,7 +71,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to={targetPath} replace />;
   }
 
-  return children;
+  return children || <Outlet />;
 };
 
 export default ProtectedRoute;
