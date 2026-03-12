@@ -14,74 +14,98 @@ import { auth, db } from '../firebase';
 
 const AuthContext = createContext(null);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const [institutionData, setInstitutionData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchUserData = async (uid) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        setUserData(userDoc.data());
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
+  /* eslint-disable-next-line react-refresh/only-export-components */
+  export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+      throw new Error('useAuth must be used within an AuthProvider');
     }
+    return context;
   };
-
-  useEffect(() => {
-    let unsubUserDoc = null;
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        setLoading(true);
-        unsubUserDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSn) => {
-          if (docSn.exists()) {
-            setUserData(docSn.data());
+  
+  export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [userData, setUserData] = useState(null);
+    const [institutionData, setInstitutionData] = useState(null);
+    const [loading, setLoading] = useState(true);
+  
+    const fetchUserData = async (uid) => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
+    };
+  
+    useEffect(() => {
+      let unsubUserDoc = null;
+      
+      const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+        // Clear previous listeners if any
+        if (unsubUserDoc) {
+          unsubUserDoc();
+          unsubUserDoc = null;
+        }
+  
+        setUser(firebaseUser);
+  
+        if (firebaseUser) {
+          setLoading(true);
+          // Use onSnapshot for real-time user data updates (role, profile, etc.)
+          unsubUserDoc = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSn) => {
+            if (docSn.exists()) {
+              setUserData(docSn.data());
+            } else {
+              setUserData(null);
+              setInstitutionData(null); // Clear institution data if user doc is missing
+            }
+            setLoading(false);
+          }, (err) => {
+            console.error('AuthContext: Failed to listen to user doc:', err);
+            setLoading(false);
+          });
+        } else {
+          // Explicitly wipe state on logout
+          setUserData(null);
+          setInstitutionData(null);
+          setLoading(false);
+        }
+      });
+  
+      return () => {
+        unsubscribeAuth();
+        if (unsubUserDoc) unsubUserDoc();
+      };
+    }, []);
+  
+    // Fetch institution data whenever institutionId changes
+    useEffect(() => {
+      let unsubInst = null;
+  
+      if (userData?.institutionId) {
+        unsubInst = onSnapshot(doc(db, 'institutions', userData.institutionId), (snap) => {
+          if (snap.exists()) {
+            setInstitutionData(snap.data());
           } else {
-            setUserData(null);
+            setInstitutionData(null);
           }
-          setLoading(false);
         }, (err) => {
-          // Rules denied access or network error — don't hang forever
-          console.error('Failed to listen to user doc:', err.code, err.message);
-          setLoading(false);
+          console.error('AuthContext: Failed to listen to institution doc:', err);
+          setInstitutionData(null);
         });
       } else {
-        setUserData(null);
-        setLoading(false);
-        if (unsubUserDoc) unsubUserDoc();
+        // We handle clearing in the auth listener, but for safety when ID just vanishes:
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setInstitutionData(current => current ? null : current);
       }
-    });
-    return () => {
-      unsubscribeAuth();
-      if (unsubUserDoc) unsubUserDoc();
-    };
-  }, []);
-
-  // Fetch institution data whenever institutionId changes
-  useEffect(() => {
-    let isSubscribed = true;
-    if (!userData?.institutionId) {
-      if (isSubscribed) setInstitutionData(null);
-      return;
-    }
-    const unsubInst = onSnapshot(doc(db, 'institutions', userData.institutionId), (snap) => {
-      if (snap.exists()) setInstitutionData(snap.data());
-      else setInstitutionData(null);
-    });
-    return () => unsubInst();
-  }, [userData?.institutionId]);
+  
+      return () => {
+        if (unsubInst) unsubInst();
+      };
+    }, [userData?.institutionId]);
 
   const login = async (email, password) => {
     return signInWithEmailAndPassword(auth, email, password);

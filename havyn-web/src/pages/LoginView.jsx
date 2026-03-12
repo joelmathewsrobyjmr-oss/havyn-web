@@ -37,7 +37,7 @@ const LoginView = () => {
 
     try {
       await login(email, password);
-      // Navigation is handled by the useEffect above
+      // Navigation is now handled exclusively by the useEffect below
     } catch (err) {
       let message = 'Something went wrong. Please try again.';
       switch (err.code) {
@@ -61,8 +61,7 @@ const LoginView = () => {
           message = err.message;
       }
       setError(message);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Stop loading only on error
     }
   };
 
@@ -79,7 +78,7 @@ const LoginView = () => {
       await resetPassword(email);
       setResetSent(true);
       setTimeout(() => setResetSent(false), 5000);
-    } catch (err) {
+    } catch {
       setError('Failed to send reset email. Check if email is valid.');
     } finally {
       setLoading(false);

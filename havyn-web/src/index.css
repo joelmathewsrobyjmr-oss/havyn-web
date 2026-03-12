@@ -183,7 +183,13 @@ a {
   /* Force grids to 2 columns on mobile */
   .mobile-2-col {
     grid-template-columns: 1fr 1fr !important;
-    gap: 0.75rem !important; /* Slightly tighter gap for 2x2 */
+    gap: 0.5rem !important; /* Slightly tighter gap for 2x2 */
+  }
+
+  /* Force grids to 4 columns on mobile */
+  .mobile-4-col {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0.25rem !important; /* Very tight gap for 4-in-a-row */
   }
 
   /* Table wrapper for horizontal scroll */

@@ -10,7 +10,7 @@ import GlassCard from '../components/GlassCard';
 
 const AdminRegisterView = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, user, role, loading: authLoading } = useAuth();
   
   const [formData, setFormData] = useState({
     institutionName: '',
@@ -24,6 +24,17 @@ const AdminRegisterView = () => {
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Safe redirect based on loaded user & role
+  React.useEffect(() => {
+    if (user && role && !authLoading) {
+      if (role === 'admin') {
+        navigate('/dashboard');
+      } else if (role === 'viewer') {
+        navigate('/viewer/dashboard');
+      }
+    }
+  }, [user, role, authLoading, navigate]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -87,7 +98,7 @@ const AdminRegisterView = () => {
         createdAt: new Date().toISOString()
       });
 
-      navigate('/dashboard');
+      // Navigation is now handled by the useEffect above
     } catch (err) {
       console.error(err);
       // Translate Firebase error codes to friendly messages

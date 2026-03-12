@@ -37,8 +37,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-    // If we have a user but no role yet (could be just signed up), 
-    // we should show a loading state instead of a blank screen.
+    // If we have a user but no role yet, wait for it with a spinner
     if (!role) {
       return (
         <div style={{
@@ -61,14 +60,17 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       );
     }
 
-    // Redirect to their respective dashboard if they try to access unauthorized path
-    const targetPath = role === 'viewer' ? '/viewer/dashboard' : '/dashboard';
+    // Role is loaded but unauthorized for this specific route.
+    // Divert them to their specific home.
+    const CORRECT_HOME = role === 'viewer' ? '/viewer/dashboard' : '/dashboard';
     
-    // Prevent infinite redirect loops if we are already on the target path or have no role
-    if (location.pathname === targetPath || !role) {
-      return <Navigate to="/role" replace />;
+    // Safety: If they are ALREADY on their correct home, but it's somehow not in allowedRoles 
+    // (which shouldn't happen), avoid infinite loop.
+    if (location.pathname === CORRECT_HOME) {
+      return children || <Outlet />;
     }
-    return <Navigate to={targetPath} replace />;
+
+    return <Navigate to={CORRECT_HOME} replace />;
   }
 
   return children || <Outlet />;
