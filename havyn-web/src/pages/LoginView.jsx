@@ -16,6 +16,7 @@ const LoginView = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   // Safe redirect based on loaded user & role
   React.useEffect(() => {
