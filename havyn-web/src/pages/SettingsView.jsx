@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Building2, Shield, Database, Moon, Sun, LogOut, ChevronRight, Save, Loader2, Info, Trash2, Download, QrCode } from 'lucide-react';
 import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
-import { db, auth, storage } from '../firebase';
+import { db, auth } from '../firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 import GlassCard from '../components/GlassCard';
@@ -10,11 +10,13 @@ import Button from '../components/Button';
 
 const SettingsView = () => {
   const navigate = useNavigate();
-  const { user, logout, institutionId, userData } = useAuth();
+  const { user, logout, institutionId } = useAuth();
 
   const [activeSection, setActiveSection] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [qrPreview, setQrPreview] = useState(null);
+  const [qrUploading, setQrUploading] = useState(false);
 
   // Organization settings
   const [orgSettings, setOrgSettings] = useState({
@@ -64,8 +66,44 @@ const SettingsView = () => {
             ifsc: ''
           }
         });
+        if (data.qrCodeBase64) setQrPreview(data.qrCodeBase64);
       }
     } catch (err) { console.error('Error loading settings:', err); }
+  };
+
+  const handleQrUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showMessage('QR image must be under 2MB.', 'error');
+      return;
+    }
+    setQrUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result;
+      setQrPreview(base64);
+      try {
+        await setDoc(doc(db, 'institutions', institutionId), { qrCodeBase64: base64 }, { merge: true });
+        showMessage('QR code uploaded and saved!');
+      } catch {
+        showMessage('Failed to save QR code.', 'error');
+      } finally {
+        setQrUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveQr = async () => {
+    if (!window.confirm('Remove this QR code?')) return;
+    try {
+      await setDoc(doc(db, 'institutions', institutionId), { qrCodeBase64: null }, { merge: true });
+      setQrPreview(null);
+      showMessage('QR code removed.');
+    } catch {
+      showMessage('Failed to remove QR code.', 'error');
+    }
   };
 
   const showMessage = (text, type = 'success') => {
@@ -78,7 +116,7 @@ const SettingsView = () => {
     try {
       await setDoc(doc(db, 'institutions', institutionId), orgSettings, { merge: true });
       showMessage('Institution profile updated successfully!');
-    } catch (err) {
+    } catch {
       showMessage('Failed to save settings.', 'error');
     } finally {
       setSaving(false);
@@ -114,7 +152,7 @@ const SettingsView = () => {
       const residentsSnap = await getDocs(collection(db, 'institutions', institutionId, 'residents'));
       const residents = residentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       
-      const attendanceSnap = await getDocs(collection(db, 'institutions', institutionId, 'attendance'));
+      await getDocs(collection(db, 'institutions', institutionId, 'attendance'));
       // Note: Attendance records are nested by date, a full export would be complex. 
       // This exports the top level metadata.
       
@@ -133,7 +171,7 @@ const SettingsView = () => {
       a.click();
       URL.revokeObjectURL(url);
       showMessage('Institutional data backup generated.');
-    } catch (err) {
+    } catch {
       showMessage('Export failed.', 'error');
     } finally {
       setSaving(false);
@@ -283,6 +321,69 @@ const SettingsView = () => {
                 Provide payment details for viewers to contribute financially. This info is visible to all registered viewers.
               </p>
 
+              {/* QR Code Upload Section */}
+              <div style={{ marginBottom: '1.75rem' }}>
+                <label style={labelStyle}>UPI QR Code Image</label>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                  Upload your UPI QR code so donors can scan directly. Supports JPG/PNG, max 2MB.
+                </p>
+
+                {qrPreview ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{
+                      padding: '12px',
+                      background: 'white',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '2px solid #ec4899',
+                      display: 'inline-block',
+                      boxShadow: '0 4px 20px rgba(236, 72, 153, 0.2)'
+                    }}>
+                      <img
+                        src={qrPreview}
+                        alt="UPI QR Code"
+                        style={{ width: '200px', height: '200px', objectFit: 'contain', display: 'block' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <label style={{
+                        padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                        background: 'var(--primary-light)', color: 'var(--primary)',
+                        fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '0.4rem'
+                      }}>
+                        {qrUploading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <QrCode size={16} />}
+                        {qrUploading ? 'Uploading...' : 'Change QR'}
+                        <input type="file" accept="image/*" onChange={handleQrUpload} style={{ display: 'none' }} disabled={qrUploading} />
+                      </label>
+                      <button onClick={handleRemoveQr} style={{
+                        padding: '8px 16px', borderRadius: 'var(--radius-md)',
+                        background: '#fef2f2', color: 'var(--danger)',
+                        fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
+                        border: '1px solid #fee2e2'
+                      }}>Remove</button>
+                    </div>
+                  </div>
+                ) : (
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', gap: '0.75rem',
+                    border: '2px dashed var(--border)', borderRadius: 'var(--radius-lg)',
+                    padding: '2.5rem', cursor: 'pointer', background: 'var(--surface)',
+                    transition: 'border-color 0.2s',
+                  }}>
+                    {qrUploading
+                      ? <Loader2 size={36} color="var(--text-muted)" style={{ animation: 'spin 1s linear infinite' }} />
+                      : <QrCode size={36} color="var(--text-muted)" />
+                    }
+                    <span style={{ fontWeight: '700', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                      {qrUploading ? 'Uploading QR...' : 'Click to upload QR code'}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JPG, PNG · Max 2MB</span>
+                    <input type="file" accept="image/*" onChange={handleQrUpload} style={{ display: 'none' }} disabled={qrUploading} />
+                  </label>
+                )}
+              </div>
+
               <label style={labelStyle}>UPI ID (for instant transfers)</label>
               <input style={inputStyle} value={orgSettings.upiId} onChange={(e) => setOrgSettings(p => ({ ...p, upiId: e.target.value }))} placeholder="e.g. institution@upi" />
 
@@ -311,6 +412,7 @@ const SettingsView = () => {
               </Button>
             </GlassCard>
           )}
+
 
           {/* Account Security */}
           {activeSection === 'security' && (

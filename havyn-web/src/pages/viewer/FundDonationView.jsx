@@ -188,16 +188,85 @@ const FundDonationView = () => {
               </div>
               <div>
                 <p style={{ fontWeight: '700' }}>UPI Payment</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Scan or pay via UPI ID</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Scan QR or pay via UPI ID</p>
               </div>
             </div>
-            <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
-              <code style={{ fontSize: '1rem', fontWeight: '700' }}>{institution?.upiId || bankDetails.upiId}</code>
-              <button onClick={() => handleCopy(institution?.upiId || bankDetails.upiId, 'upi')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                {copied === 'upi' ? <Check size={20} /> : <Copy size={20} />}
-              </button>
-            </div>
+
+            {institution?.qrCodeBase64 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem' }}>
+                {/* QR Code Image */}
+                <div style={{
+                  padding: '16px',
+                  background: 'white',
+                  borderRadius: '16px',
+                  border: '2px solid rgba(59, 130, 246, 0.3)',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                  display: 'inline-block'
+                }}>
+                  <img
+                    src={institution.qrCodeBase64}
+                    alt="UPI QR Code"
+                    style={{ width: '220px', height: '220px', objectFit: 'contain', display: 'block' }}
+                  />
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  Open any UPI app and scan this QR to pay
+                </p>
+
+                {/* UPI ID row with Copy */}
+                {(institution?.upiId || bankDetails.upiId) && (
+                  <div style={{ width: '100%', padding: '1rem', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)' }}>
+                    <div>
+                      <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '2px' }}>UPI ID</p>
+                      <code style={{ fontSize: '0.95rem', fontWeight: '700' }}>{institution?.upiId || bankDetails.upiId}</code>
+                    </div>
+                    <button onClick={() => handleCopy(institution?.upiId || bankDetails.upiId, 'upi')} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.4rem',
+                      padding: '8px 14px', borderRadius: 'var(--radius-md)',
+                      background: copied === 'upi' ? '#f0fdf4' : 'var(--primary-light)',
+                      color: copied === 'upi' ? 'var(--success)' : 'var(--primary)',
+                      border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem',
+                      transition: 'all 0.2s'
+                    }}>
+                      {copied === 'upi' ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy UPI ID</>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* No QR uploaded yet */
+              <div>
+                {(institution?.upiId || bankDetails.upiId) ? (
+                  <div>
+                    <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', marginBottom: '0.75rem' }}>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '2px' }}>UPI ID</p>
+                        <code style={{ fontSize: '1rem', fontWeight: '700' }}>{institution?.upiId || bankDetails.upiId}</code>
+                      </div>
+                      <button onClick={() => handleCopy(institution?.upiId || bankDetails.upiId, 'upi')} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        padding: '8px 14px', borderRadius: 'var(--radius-md)',
+                        background: copied === 'upi' ? '#f0fdf4' : 'var(--primary-light)',
+                        color: copied === 'upi' ? 'var(--success)' : 'var(--primary)',
+                        border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem',
+                        transition: 'all 0.2s'
+                      }}>
+                        {copied === 'upi' ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy UPI ID</>}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>QR code not configured — use UPI ID above to pay</p>
+                  </div>
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border)' }}>
+                    <QrCode size={36} color="var(--text-muted)" style={{ margin: '0 auto 0.75rem' }} />
+                    <p style={{ color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.9rem' }}>Donation details not available</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.25rem' }}>This institution has not configured UPI payment details yet.</p>
+                  </div>
+                )}
+              </div>
+            )}
           </GlassCard>
+
 
           {/* Bank Account */}
           <GlassCard style={{ padding: '1.5rem' }}>
