@@ -24,6 +24,9 @@ const formatHoursLeft = (hrs) => {
   return `${Math.round(hrs)}h left — cancellation locked`;
 };
 
+// Statuses that allow cancellation (pending = not yet reviewed, approved = accepted by institution)
+const CANCELLABLE_STATUSES = ['pending', 'approved', 'accepted'];
+
 const DonationHistoryView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -178,10 +181,10 @@ const DonationHistoryView = () => {
             const color = isFood ? 'var(--primary)' : '#ec4899';
             const isCancelled = donation.status === 'cancelled';
 
-            // Cancellation eligibility (only for food bookings)
-            const hrs = isFood ? getHoursRemaining(donation.date) : null;
-            const canCancel = hrs !== null && hrs >= 48 && donation.status === 'pending';
-            const cancelLocked = hrs !== null && hrs < 48 && hrs > 0 && donation.status === 'pending';
+    const hrs = isFood ? getHoursRemaining(donation.date) : null;
+            const isCancellable = CANCELLABLE_STATUSES.includes(donation.status);
+            const canCancel = hrs !== null && hrs >= 48 && isCancellable;
+            const cancelLocked = hrs !== null && hrs < 48 && hrs > 0 && isCancellable;
             const hoursLabel = isFood && !isCancelled ? formatHoursLeft(hrs) : null;
 
             return (
@@ -239,14 +242,21 @@ const DonationHistoryView = () => {
                     )}
                   </div>
 
-                  {/* Right side: status + cancel button */}
+                  {/* Right side: status badge + cancel button */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.6rem', flexShrink: 0 }}>
-                    <span style={getStatusStyle(donation.status)}>
-                      {donation.status}
-                    </span>
 
-                    {/* Cancel button — food donations only, pending only */}
-                    {isFood && donation.status === 'pending' && (
+                    {/* Status badge */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+                      <span style={getStatusStyle(donation.status)}>
+                        {donation.status === 'approved' || donation.status === 'accepted' ? '✓ Accepted' : donation.status}
+                      </span>
+                      {isFood && (donation.status === 'approved' || donation.status === 'accepted') && (
+                        <p style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: '700', whiteSpace: 'nowrap' }}>Slot confirmed ✓</p>
+                      )}
+                    </div>
+
+                    {/* Cancel button — food donations only, cancellable status only */}
+                    {isFood && CANCELLABLE_STATUSES.includes(donation.status) && (
                       canCancel ? (
                         <button
                           onClick={() => handleCancel(donation)}
