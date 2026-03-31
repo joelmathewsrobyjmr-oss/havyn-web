@@ -26,7 +26,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { icon: BarChart3, label: 'Attendance Analytics', path: '/attendance-report' },
     { icon: ShoppingBag, label: 'Donation Desk', path: '/donations' },
     { icon: FileText, label: 'Donation Report', path: '/donation-report' },
-    { icon: Package, label: 'Supply Needs', path: '/requirements' },
+    { icon: Package, label: 'Supply Needs', path: '/needs' },
     { icon: FileText, label: 'Institutional Archives', path: '/documents' },
     { icon: Activity, label: 'Activity Audit', path: '/logs' },
     { icon: Settings, label: 'System Settings', path: '/settings' },

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Building2, MapPin, Phone, Mail, Globe, HandHelping, Heart, ArrowLeft, Loader2, Info, Package } from 'lucide-react';
-import { doc, getDoc, collection, query, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import GlassCard from '../../components/GlassCard';
 import Button from '../../components/Button';
@@ -10,7 +10,7 @@ const InstitutionDetailView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [institution, setInstitution] = useState(null);
-  const [requirements, setRequirements] = useState([]);
+  const [supplyNeeds, setSupplyNeeds] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,13 +32,41 @@ const InstitutionDetailView = () => {
     };
     fetchInstitution();
 
-    const q = query(collection(db, 'institutions', id, 'foodRequirements'));
+    const q = query(collection(db, 'institutions', id, 'supplyNeeds'));
     const unsub = onSnapshot(q, (snap) => {
-      setRequirements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const allNeeds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSupplyNeeds(allNeeds.filter(n => n.status === 'open'));
     });
 
     return () => unsub();
   }, [id, navigate]);
+
+  const handleAcceptNeed = async (need) => {
+    if (window.confirm(`Are you sure you want to fulfill this need: "${need.title}"?`)) {
+      try {
+        // Mark as fulfilled
+        await updateDoc(doc(db, 'institutions', id, 'supplyNeeds', need.id), {
+          status: 'fulfilled',
+          fulfilledAt: serverTimestamp(),
+          fulfilledBy: 'A Donor (Public Viewer)'
+        });
+
+        // Notify the institution
+        await addDoc(collection(db, 'institutions', id, 'notifications'), {
+          type: 'SUPPLY_ACCEPTED',
+          title: 'Supply Need Accepted!',
+          message: `A donor has opted to fulfill your request for: "${need.title}". They should be reaching out shortly.`,
+          read: false,
+          createdAt: serverTimestamp()
+        });
+        
+        alert('Thank you! The institution has been notified. Please contact them using the details provided above to coordinate delivery.');
+      } catch (err) {
+        console.error('Error accepting need:', err);
+        alert('Something went wrong. Please try again.');
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -94,28 +122,37 @@ const InstitutionDetailView = () => {
           </div>
         </GlassCard>
 
-        {requirements.length > 0 && (
+        {supplyNeeds.length > 0 && (
           <div style={{ marginBottom: '2.5rem' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Package size={24} color="var(--primary)" /> Current Support Needs
+              <Package size={24} color="var(--primary)" /> Current Supply Needs
             </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-              {requirements.map(req => (
-                <GlassCard key={req.id} style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                   <div style={{ 
-                     width: '36px', height: '36px', borderRadius: 'var(--radius-md)', 
-                     background: req.urgency === 'high' ? '#fee2e2' : 'var(--primary-light)',
-                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                   }}>
-                     <Package size={18} color={req.urgency === 'high' ? 'var(--danger)' : 'var(--primary)'} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              {supplyNeeds.map(need => (
+                <GlassCard key={need.id} style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                     <div style={{ 
+                       width: '36px', height: '36px', borderRadius: 'var(--radius-md)', 
+                       background: 'var(--primary-light)',
+                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                     }}>
+                       <Package size={18} color="var(--primary)" />
+                     </div>
+                     <p style={{ fontWeight: '700', fontSize: '1.05rem', margin: 0 }}>{need.title}</p>
                    </div>
-                   <div style={{ flex: 1 }}>
-                     <p style={{ fontWeight: '700', fontSize: '0.95rem' }}>{req.item}</p>
-                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Quantity: {req.quantity}</p>
-                   </div>
-                   {req.urgency === 'high' && (
-                     <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--danger)', border: '1px solid var(--danger)', padding: '2px 6px', borderRadius: '4px' }}>URGENT</span>
-                   )}
+                   
+                   <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: '0 0 1rem 0', flex: 1, lineHeight: '1.5' }}>
+                     {need.description}
+                   </p>
+                   
+                   <Button 
+                     variant="primary" 
+                     fullWidth 
+                     onClick={() => handleAcceptNeed(need)}
+                     style={{ background: '#def7ec', color: '#03543f', borderColor: '#def7ec', fontWeight: '700' }}
+                   >
+                     Accept & I am willing to give
+                   </Button>
                 </GlassCard>
               ))}
             </div>

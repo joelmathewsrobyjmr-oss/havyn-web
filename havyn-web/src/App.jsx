@@ -15,6 +15,7 @@ import AttendanceReportView from './pages/AttendanceReportView';
 import DocumentsView from './pages/DocumentsView';
 import DonationsManagementView from './pages/DonationsManagementView';
 import FoodRequirementsView from './pages/FoodRequirementsView';
+import SupplyNeedsView from './pages/SupplyNeedsView';
 import SettingsView from './pages/SettingsView';
 import LogsView from './pages/LogsView';
 import DonationReportView from './pages/DonationReportView';
@@ -54,6 +55,7 @@ function App() {
             <Route path="/documents" element={<DocumentsView />} />
             <Route path="/donations" element={<DonationsManagementView />} />
             <Route path="/requirements" element={<FoodRequirementsView />} />
+            <Route path="/needs" element={<SupplyNeedsView />} />
             <Route path="/logs" element={<LogsView />} />
             <Route path="/donation-report" element={<DonationReportView />} />
             <Route path="/settings" element={<SettingsView />} />
