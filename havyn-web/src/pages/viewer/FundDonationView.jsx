@@ -92,7 +92,7 @@ const FundDonationView = () => {
     ? buildUpiLink(upiId, institutionName, amount)
     : null;
 
-  const handleUpiAppClick = (_app) => {
+  const handleUpiAppClick = () => {
     if (!upiLink) return;
     setPaymentInitiated(true);
     window.location.href = upiLink;
