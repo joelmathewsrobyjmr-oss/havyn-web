@@ -68,12 +68,13 @@ service cloud.firestore {
       
       // Food Donations
       match /foodDonations/{donId} {
-        allow read: if isInstitutionAdmin(instId) || (isAuthenticated() && resource.data.userId == request.auth.uid);
+        // Any authenticated user can read (needed for the donor calendar to see blocked slots)
+        allow read: if isAuthenticated();
         allow create: if isAuthenticated();
         allow update: if isInstitutionAdmin(instId);
       }
       
-      // Fund Donations
+      // Fund Donations 
       match /fundDonations/{donId} {
         allow read: if isInstitutionAdmin(instId) || (isAuthenticated() && resource.data.userId == request.auth.uid);
         allow create: if isAuthenticated();
