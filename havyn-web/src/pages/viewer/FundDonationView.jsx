@@ -14,22 +14,22 @@ const UPI_APPS = [
   {
     name: 'GPay',
     color: '#4285F4',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/256px-Google_Pay_Logo.svg.png',
+    logo: '/icons/gpay.svg',
   },
   {
     name: 'PhonePe',
     color: '#5f259f',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/240px-PhonePe_Logo.svg.png',
+    logo: '/icons/phonepe.svg',
   },
   {
     name: 'Paytm',
     color: '#00BAF2',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Paytm_logo.png/240px-Paytm_logo.png',
+    logo: '/icons/paytm.svg',
   },
   {
     name: 'BHIM',
     color: '#007A3D',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/BHIM_logo.png/240px-BHIM_logo.png',
+    logo: '/icons/bhim.svg',
   },
 ];
 
