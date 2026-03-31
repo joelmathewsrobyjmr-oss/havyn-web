@@ -13,12 +13,11 @@ import {
   BarChart3,
   X
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userData } = useAuth();
+
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },

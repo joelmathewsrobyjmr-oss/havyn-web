@@ -17,8 +17,7 @@ import {
   Venus
 } from 'lucide-react';
 import { doc, getDoc, collection, query, where, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { db, storage } from '../firebase';
-import { ref, deleteObject } from 'firebase/storage';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';

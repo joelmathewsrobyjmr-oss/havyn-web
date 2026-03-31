@@ -7,7 +7,7 @@ import {
 import { db } from '../firebase';
 import {
   collection, addDoc, deleteDoc, doc, query, orderBy,
-  onSnapshot, serverTimestamp, setDoc, getDocs
+  onSnapshot, serverTimestamp, getDocs
 } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
