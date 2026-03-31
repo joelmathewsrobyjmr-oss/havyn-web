@@ -85,6 +85,16 @@ const LoginView = () => {
     }
   };
 
+  // Show a spinner while Firebase is resolving the current auth session
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #e8f5ff 0%, #f0f4ff 100%)' }}>
+        <div style={{ width: '44px', height: '44px', border: '4px solid #e0e0e0', borderTopColor: '#5ccbf4', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div 
       style={{

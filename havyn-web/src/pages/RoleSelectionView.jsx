@@ -1,11 +1,29 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
 
 const RoleSelectionView = () => {
   const navigate = useNavigate();
+  const { user, role, loading } = useAuth();
+
+  // While Firebase is still resolving session, show a spinner
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #e8f5ff 0%, #f0f4ff 100%)' }}>
+        <div style={{ width: '44px', height: '44px', border: '4px solid #e0e0e0', borderTopColor: '#5ccbf4', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // If user is already logged in, redirect them to their home
+  if (user && role) {
+    navigate(role === 'viewer' ? '/viewer/dashboard' : '/dashboard', { replace: true });
+    return null;
+  }
 
   return (
     <div 
