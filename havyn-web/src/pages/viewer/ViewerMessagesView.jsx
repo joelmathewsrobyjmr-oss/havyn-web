@@ -31,11 +31,13 @@ const ViewerMessagesView = () => {
       setChats(list);
       setLoadingChats(false);
       
-      // Auto-select chat if passed in URL and not already selected
       if (initialChatId && !activeChat) {
         const chatToSelect = list.find(c => c.id === initialChatId);
         if (chatToSelect) setActiveChat(chatToSelect);
       }
+    }, (err) => {
+      console.error('Firestore Chat Error:', err);
+      setLoadingChats(false);
     });
 
     return () => unsub();
@@ -52,8 +54,9 @@ const ViewerMessagesView = () => {
 
     const unsub = onSnapshot(q, (snapshot) => {
       setMessages(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      // Auto-scroll to bottom
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }, (err) => {
+      console.error('Firestore Message Error:', err);
     });
 
     return () => unsub();
@@ -151,18 +154,21 @@ const ViewerMessagesView = () => {
         <div style={{ flex: 1, display: activeChat ? 'flex' : 'none', flexDirection: 'column', background: 'white' }} className="chat-window-container">
           {activeChat ? (
             <>
-              {/* Chat Header */}
-              <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface)' }}>
-                <button onClick={() => setActiveChat(null)} className="back-to-list-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                  <ArrowLeft size={20} />
+              <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface)' }}>
+                <button 
+                  onClick={() => setActiveChat(null)} 
+                  style={{ background: 'var(--primary-light)', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                  className="show-on-mobile-only"
+                >
+                  <ArrowLeft size={18} />
                 </button>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Building2 size={20} color="var(--primary)" />
+                <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Building2 size={18} color="var(--primary)" />
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700' }}>{activeChat.institutionName}</h3>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    Fulfilling: {activeChat.needTitle}
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeChat.institutionName}</h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeChat.needTitle}
                   </p>
                 </div>
               </div>
@@ -225,10 +231,15 @@ const ViewerMessagesView = () => {
       </GlassCard>
 
       <style>{`
+        @media (max-width: 767px) {
+          .chat-list-container { width: 100% !important; border: none !important; }
+          .chat-window-container { width: 100% !important; }
+          .show-on-mobile-only { display: flex !important; }
+        }
         @media (min-width: 768px) {
           .chat-list-container { display: flex !important; }
           .chat-window-container { display: flex !important; }
-          .back-to-list-btn { display: none !important; }
+          .show-on-mobile-only { display: none !important; }
         }
       `}</style>
     </div>

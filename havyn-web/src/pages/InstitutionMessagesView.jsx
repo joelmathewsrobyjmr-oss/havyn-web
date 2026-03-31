@@ -29,13 +29,15 @@ const InstitutionMessagesView = () => {
       setChats(list);
       setLoadingChats(false);
       
-      // Auto-update activeChat reference if it was modified
       if (activeChat) {
         const updatedActive = list.find(c => c.id === activeChat.id);
         if (updatedActive) setActiveChat(updatedActive);
-      } else if (list.length > 0) {
-        setActiveChat(list[0]); // Auto select first on desktop usually, but let's keep it null for mobile friendliness or explicit click
+      } else if (list.length > 0 && window.innerWidth >= 768) {
+        setActiveChat(list[0]);
       }
+    }, (err) => {
+      console.error('Firestore Admin Chat Error:', err);
+      setLoadingChats(false);
     });
 
     return () => unsub();
@@ -52,8 +54,9 @@ const InstitutionMessagesView = () => {
 
     const unsub = onSnapshot(q, (snapshot) => {
       setMessages(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      // Auto-scroll to bottom
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }, (err) => {
+      console.error('Firestore Admin Message Error:', err);
     });
 
     return () => unsub();
@@ -154,17 +157,20 @@ const InstitutionMessagesView = () => {
         <div style={{ flex: 1, display: activeChat ? 'flex' : 'none', flexDirection: 'column', background: 'white' }} className="chat-window-container">
           {activeChat ? (
             <>
-              {/* Chat Header */}
-              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface)' }}>
-                <button onClick={() => setActiveChat(null)} className="back-to-list-btn show-on-mobile" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'none' }}>
-                  ◀ Back
+              <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface)' }}>
+                <button 
+                  onClick={() => setActiveChat(null)} 
+                  style={{ background: 'var(--primary-light)', border: 'none', cursor: 'pointer', color: 'var(--primary)', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                  className="show-on-mobile-only"
+                >
+                  <ArrowLeft size={18} />
                 </button>
-                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '1.2rem' }}>{activeChat.donorName?.charAt(0)}</span>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '1.1rem' }}>{activeChat.donorName?.charAt(0)}</span>
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>{activeChat.donorName}</h3>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{activeChat.donorEmail}</p>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeChat.donorName}</h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeChat.donorEmail}</p>
                 </div>
               </div>
 
@@ -230,13 +236,15 @@ const InstitutionMessagesView = () => {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media (max-width: 767px) {
+          .chat-list-container { width: 100% !important; border: none !important; }
+          .chat-window-container { width: 100% !important; }
+          .show-on-mobile-only { display: flex !important; }
+        }
         @media (min-width: 768px) {
           .chat-list-container { display: flex !important; }
           .chat-window-container { display: flex !important; }
-          .back-to-list-btn { display: none !important; }
-        }
-        @media (max-width: 767px) {
-          .back-to-list-btn { display: inline-flex !important; }
+          .show-on-mobile-only { display: none !important; }
         }
       `}</style>
     </div>
