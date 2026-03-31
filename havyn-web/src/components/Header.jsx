@@ -141,6 +141,11 @@ const Header = ({ toggleSidebar }) => {
       // Save to Firestore users/{uid} — no Storage needed
       await updateProfileData(user.uid, { adminPhotoBase64: base64 });
 
+      // Sync the photo to the institution document so it appears on the donor-facing pages
+      if (institutionId) {
+        await updateDoc(doc(db, 'institutions', institutionId), { logo: base64 });
+      }
+
       // Extract gradient colour fire-and-forget
       extractDominantColor(base64).then(({ r, g, b }) => {
         const darker = `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)})`;
