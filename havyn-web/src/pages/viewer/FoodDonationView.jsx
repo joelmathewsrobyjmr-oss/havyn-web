@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Coffee, Utensils, Moon, ArrowLeft, Loader2, CheckCircle,
   Info, AlertCircle, Lock, Clock, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
-  collection, getDocs, addDoc, query, where, serverTimestamp
+  collection, getDocs, addDoc, query, where, serverTimestamp, onSnapshot
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,76 +43,60 @@ const FoodDonationView = () => {
   // Booking state
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [slotStatusMap, setSlotStatusMap] = useState({});
-  const [monthBookings, setMonthBookings] = useState({}); // { 'YYYY-MM-DD': [...bookings] }
-  const [loading, setLoading] = useState(true);
-  const [calLoading, setCalLoading] = useState(true);
+  const [allFoodDonations, setAllFoodDonations] = useState([]);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [booking, setBooking] = useState(false);
   const [toast, setToast] = useState(null);
   const [errors, setErrors] = useState({});
 
-  // ── Fetch ALL bookings for the visible month (calendar data) ──────────
-  const fetchMonthBookings = useCallback(async () => {
-    setCalLoading(true);
-    try {
-      // Date range for the month
-      const firstDay = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-01`;
-      const lastDayNum = new Date(calYear, calMonth + 1, 0).getDate();
-      const lastDay = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
+  // ── REAL-TIME listener for ALL food donations of this institution ─────
+  // This single listener powers both the calendar AND the slot selector.
+  // When the institution approves/rejects, the snapshot fires automatically.
+  useEffect(() => {
+    if (!id) return;
 
-      const q = query(
-        collection(db, 'institutions', id, 'foodDonations'),
-        where('date', '>=', firstDay),
-        where('date', '<=', lastDay)
-      );
-      const snap = await getDocs(q);
+    const q = query(collection(db, 'institutions', id, 'foodDonations'));
+    const unsub = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setAllFoodDonations(docs);
+      setInitialLoaded(true);
+    }, (err) => {
+      console.error('Snapshot error:', err);
+      setInitialLoaded(true);
+    });
 
-      const map = {};
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (!BLOCKING_STATUSES.includes(data.status)) return;
-        if (!map[data.date]) map[data.date] = [];
-        map[data.date].push(data);
-      });
-      setMonthBookings(map);
-    } catch (err) {
-      console.error('Error fetching month bookings:', err);
-    } finally {
-      setCalLoading(false);
-    }
-  }, [id, calMonth, calYear]);
+    return () => unsub();
+  }, [id]);
 
-  useEffect(() => { fetchMonthBookings(); }, [fetchMonthBookings]);
+  // ── Derived: bookings by date (for calendar) ─────────────────────────
+  const bookingsByDate = useMemo(() => {
+    const map = {};
+    allFoodDonations.forEach(d => {
+      if (!d.date || !BLOCKING_STATUSES.includes(d.status)) return;
+      if (!map[d.date]) map[d.date] = [];
+      map[d.date].push(d);
+    });
+    return map;
+  }, [allFoodDonations]);
 
-  // ── Fetch slot status for the SELECTED day ────────────────────────────
-  const fetchSlotStatus = useCallback(async () => {
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, 'institutions', id, 'foodDonations'),
-        where('date', '==', selectedDate)
-      );
-      const snapshot = await getDocs(q);
-      const map = {};
-      snapshot.docs.forEach(d => {
-        const data = d.data();
-        if (!BLOCKING_STATUSES.includes(data.status)) return;
-        const existing = map[data.slotId];
-        if (!existing || data.status === 'approved' || data.status === 'accepted') {
-          map[data.slotId] = data.status === 'accepted' ? 'approved' : data.status;
-        }
-      });
-      setSlotStatusMap(map);
-    } catch (err) {
-      console.error('Error fetching slot status:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [id, selectedDate]);
+  // ── Derived: slot status for selected day ────────────────────────────
+  const slotStatusMap = useMemo(() => {
+    const dayBookings = bookingsByDate[selectedDate] || [];
+    const map = {};
+    dayBookings.forEach(d => {
+      const existing = map[d.slotId];
+      // approved/accepted takes priority over pending
+      if (!existing || d.status === 'approved' || d.status === 'accepted') {
+        map[d.slotId] = (d.status === 'accepted') ? 'approved' : d.status;
+      }
+    });
+    return map;
+  }, [bookingsByDate, selectedDate]);
 
-  useEffect(() => { fetchSlotStatus(); }, [fetchSlotStatus]);
+  const bookedCount = Object.keys(slotStatusMap).length;
+  const allBooked = bookedCount >= SLOTS.length;
 
-  // ── Calendar grid data ────────────────────────────────────────────────
+  // ── Calendar grid ────────────────────────────────────────────────────
   const calendarDays = useMemo(() => {
     const firstDay = new Date(calYear, calMonth, 1);
     const lastDay = new Date(calYear, calMonth + 1, 0);
@@ -123,7 +107,7 @@ const FoodDonationView = () => {
     for (let i = 0; i < startPad; i++) cells.push(null);
     for (let d = 1; d <= totalDays; d++) {
       const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayBookings = monthBookings[dateStr] || [];
+      const dayBookings = bookingsByDate[dateStr] || [];
       const approvedCount = dayBookings.filter(b => b.status === 'approved' || b.status === 'accepted').length;
       const pendingCount = dayBookings.filter(b => b.status === 'pending').length;
       const totalBlocked = approvedCount + pendingCount;
@@ -134,7 +118,7 @@ const FoodDonationView = () => {
       });
     }
     return cells;
-  }, [calMonth, calYear, monthBookings]);
+  }, [calMonth, calYear, bookingsByDate]);
 
   // ── Navigation ────────────────────────────────────────────────────────
   const prevMonth = () => {
@@ -147,7 +131,7 @@ const FoodDonationView = () => {
   };
 
   const selectDay = (dateStr) => {
-    if (dateStr < todayStr) return; // can't book past dates
+    if (dateStr < todayStr) return;
     setSelectedDate(dateStr);
     setSelectedSlot(null);
     setErrors({});
@@ -168,23 +152,24 @@ const FoodDonationView = () => {
     if (!validate() || !user) return;
     setBooking(true);
     try {
-      // Re-check availability right before booking
-      const recheck = query(
+      // Re-check: is slot still available? (server-side guard)
+      const recheckQ = query(
         collection(db, 'institutions', id, 'foodDonations'),
-        where('date', '==', selectedDate),
-        where('slotId', '==', selectedSlot.id)
+        where('date', '==', selectedDate)
       );
-      const recheckSnap = await getDocs(recheck);
-      const hasActive = recheckSnap.docs.some(d => BLOCKING_STATUSES.includes(d.data().status));
+      const recheckSnap = await getDocs(recheckQ);
+      const slotTaken = recheckSnap.docs.some(d => {
+        const data = d.data();
+        return data.slotId === selectedSlot.id && BLOCKING_STATUSES.includes(data.status);
+      });
 
-      if (hasActive) {
+      if (slotTaken) {
         setToast({ message: '⚠️ Sorry, this slot was just booked by another donor. Please select another slot.', type: 'error' });
         setSelectedSlot(null);
-        fetchSlotStatus();
-        fetchMonthBookings();
         return;
       }
 
+      // Create booking
       await addDoc(collection(db, 'institutions', id, 'foodDonations'), {
         userId: user.uid,
         userEmail: user.email,
@@ -195,6 +180,7 @@ const FoodDonationView = () => {
         createdAt: serverTimestamp()
       });
 
+      // Notify institution
       await addDoc(collection(db, 'institutions', id, 'notifications'), {
         type: 'FOOD_BOOKING',
         title: 'New Food Booking',
@@ -203,10 +189,9 @@ const FoodDonationView = () => {
         createdAt: serverTimestamp()
       });
 
-      setToast({ message: `✅ ${selectedSlot.label} on ${selectedDate} booked! Awaiting approval.`, type: 'success' });
+      setToast({ message: `✅ Booking request submitted successfully! ${selectedSlot.label} on ${selectedDate} is pending approval.`, type: 'success' });
       setSelectedSlot(null);
-      fetchSlotStatus();
-      fetchMonthBookings();
+      // No manual refetch needed — onSnapshot will update automatically
     } catch (err) {
       console.error('Booking error:', err);
       setToast({ message: 'Failed to submit booking. Please try again.', type: 'error' });
@@ -214,9 +199,6 @@ const FoodDonationView = () => {
       setBooking(false);
     }
   };
-
-  const bookedCount = Object.keys(slotStatusMap).length;
-  const allBooked = bookedCount >= SLOTS.length;
 
   // ═══════════════════════════════════════════════════════════════════════
   return (
@@ -241,7 +223,7 @@ const FoodDonationView = () => {
             📅 MONTHLY CALENDAR
         ═══════════════════════════════════════════════════════════════ */}
         <GlassCard style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-          {/* Month nav */}
+          {/* Month navigation */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <button onClick={prevMonth} style={navBtn}><ChevronLeft size={18} /></button>
             <h3 style={{ fontSize: '1.1rem', fontWeight: '800' }}>
@@ -262,7 +244,7 @@ const FoodDonationView = () => {
           </div>
 
           {/* Calendar grid */}
-          {calLoading ? (
+          {!initialLoaded ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}>
               <Loader2 size={24} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
             </div>
@@ -276,19 +258,12 @@ const FoodDonationView = () => {
                 const hasSlots = cell.totalBlocked > 0;
                 const available = SLOTS.length - cell.totalBlocked;
 
-                // Determine cell color
                 let bg = 'white';
                 let borderColor = 'var(--border)';
-                if (cell.isPast) {
-                  bg = '#f9fafb';
-                } else if (isSelected) {
-                  bg = 'var(--primary-light)';
-                  borderColor = 'var(--primary)';
-                } else if (cell.allBooked) {
-                  bg = '#f3f4f6'; // grey = fully booked
-                } else if (cell.approvedCount > 0) {
-                  bg = '#f0fdf4'; // light green = some approved but slots remain
-                }
+                if (cell.isPast) bg = '#f9fafb';
+                else if (isSelected) { bg = 'var(--primary-light)'; borderColor = 'var(--primary)'; }
+                else if (cell.allBooked) bg = '#f3f4f6';
+                else if (cell.approvedCount > 0) bg = '#f0fdf4';
 
                 return (
                   <div
@@ -298,14 +273,11 @@ const FoodDonationView = () => {
                       position: 'relative', minHeight: '56px', padding: '4px 5px',
                       borderRadius: '8px', cursor: cell.isPast ? 'default' : 'pointer',
                       border: isToday ? '2px solid var(--primary)' : isSelected ? `2px solid ${borderColor}` : `1px solid ${borderColor}`,
-                      background: bg,
-                      opacity: cell.isPast ? 0.45 : 1,
-                      transition: 'all 0.15s ease',
-                      display: 'flex', flexDirection: 'column',
+                      background: bg, opacity: cell.isPast ? 0.45 : 1,
+                      transition: 'all 0.15s ease', display: 'flex', flexDirection: 'column',
                       boxShadow: isSelected ? '0 4px 12px rgba(59,130,246,0.15)' : 'none'
                     }}
                   >
-                    {/* Day number */}
                     <span style={{
                       fontSize: '0.8rem', fontWeight: isToday || isSelected ? '800' : '600',
                       color: cell.isPast ? '#9ca3af' : isToday ? 'var(--primary)' : 'var(--text)'
@@ -313,7 +285,6 @@ const FoodDonationView = () => {
                       {cell.day}
                     </span>
 
-                    {/* Slot dots + count */}
                     {!cell.isPast && hasSlots && (
                       <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '2px' }}>
                         {cell.approvedCount > 0 && (
@@ -331,11 +302,8 @@ const FoodDonationView = () => {
                       </div>
                     )}
 
-                    {/* Green available indicator for future empty days */}
                     {!cell.isPast && !hasSlots && (
-                      <span style={{
-                        marginTop: 'auto', fontSize: '0.55rem', fontWeight: '700', color: '#16a34a'
-                      }}>
+                      <span style={{ marginTop: 'auto', fontSize: '0.55rem', fontWeight: '700', color: '#16a34a' }}>
                         {SLOTS.length}/{SLOTS.length}
                       </span>
                     )}
@@ -395,7 +363,7 @@ const FoodDonationView = () => {
             Choose an Available Slot
           </label>
 
-          {loading ? (
+          {!initialLoaded ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
               <Loader2 size={28} color="var(--primary)" style={{ animation: 'spin 1s linear infinite' }} />
             </div>
@@ -441,7 +409,6 @@ const FoodDonationView = () => {
                       boxShadow: isSelected ? '0 8px 16px rgba(59,130,246,0.1)' : 'none'
                     }}
                   >
-                    {/* Icon */}
                     <div style={{
                       width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
                       backgroundColor: isBlocked ? (isApproved ? '#dcfce7' : '#fef3c7') : isSelected ? 'var(--primary-light)' : 'var(--surface)',
@@ -451,7 +418,6 @@ const FoodDonationView = () => {
                       <Icon size={22} />
                     </div>
 
-                    {/* Text */}
                     <div style={{ flex: 1 }}>
                       <p style={{ fontWeight: '700', fontSize: '1rem', color: isBlocked ? 'var(--text-muted)' : 'var(--text)' }}>
                         {slot.label}
@@ -473,7 +439,6 @@ const FoodDonationView = () => {
                       )}
                     </div>
 
-                    {/* Badge */}
                     {isApproved ? (
                       <span style={badgeStyle('#dcfce7', '#16a34a')}>✓ Booked</span>
                     ) : isPending ? (
@@ -514,7 +479,7 @@ const FoodDonationView = () => {
         <Button
           variant="primary"
           fullWidth
-          disabled={booking || loading || allBooked}
+          disabled={booking || !initialLoaded || allBooked}
           onClick={handleBooking}
           style={{ padding: '1.25rem', fontSize: '1.05rem' }}
         >
@@ -537,9 +502,7 @@ const FoodDonationView = () => {
         </button>
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
