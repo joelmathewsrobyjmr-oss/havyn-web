@@ -10,7 +10,7 @@ import GlassCard from '../components/GlassCard';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
-const StatCard = ({ label, value, color, onClick }) => (
+const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
   <GlassCard 
     style={{ 
       padding: '0.9rem 0.75rem',
@@ -232,7 +232,7 @@ const StatDetailModal = ({ isOpen, onClose, type, data, color }) => {
   );
 };
 
-const DashboardCard = ({ title, description, onClick, color }) => (
+const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
   <GlassCard 
     style={{ 
       cursor: 'pointer', 
