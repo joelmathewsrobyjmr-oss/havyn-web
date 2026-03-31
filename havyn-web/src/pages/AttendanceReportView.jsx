@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Loader2, CalendarDays, Filter, PieChart, Printer } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
@@ -71,37 +71,39 @@ const AttendanceReportView = () => {
 
       // 4. Build report data
       const report = allResidents.map(resident => {
-        let presentDays = 0;
-        let absentDays = 0;
-        let unmarkedDays = 0;
+        let presentCount = 0;
+        let absentCount = 0;
+        let unmarkedCount = 0;
         const dailyRecords = {};
 
         dates.forEach(date => {
           const record = attendanceByDate[date]?.[resident.id];
-          if (record?.present === true) { 
-            presentDays++; 
-            dailyRecords[date] = 'Present'; 
+          
+          // Context-aware labels for status-specific records
+          if (resident.status === 'discharged' || resident.status === 'died') {
+            const lbl = resident.status.charAt(0).toUpperCase() + resident.status.slice(1);
+            dailyRecords[date] = lbl;
+            unmarkedCount += 2; // both sessions
+            return;
           }
-          else if (record?.present === false) { 
-            absentDays++; 
-            dailyRecords[date] = 'Absent'; 
-          }
-          else { 
-            unmarkedDays++; 
-            dailyRecords[date] = '--'; 
-          }
+
+          let dayStr = '';
+          const mrn = record?.present;
+          if (mrn === true) { presentCount++; dayStr += 'M: ✓'; }
+          else if (mrn === false) { absentCount++; dayStr += 'M: ✗'; }
+          else { unmarkedCount++; dayStr += 'M: -'; }
+
+          dayStr += ' | ';
+
+          const eve = record?.eveningPresent;
+          if (eve === true) { presentCount++; dayStr += 'E: ✓'; }
+          else if (eve === false) { absentCount++; dayStr += 'E: ✗'; }
+          else { unmarkedCount++; dayStr += 'E: -'; }
+
+          dailyRecords[date] = dayStr;
         });
 
-        // Context-aware labels for status-specific records
-        if (resident.status === 'discharged' || resident.status === 'died') {
-          dates.forEach(date => {
-            if (dailyRecords[date] === '--') {
-              dailyRecords[date] = resident.status.charAt(0).toUpperCase() + resident.status.slice(1);
-            }
-          });
-        }
-
-        return { ...resident, presentDays, absentDays, unmarkedDays, totalDays: dates.length, dailyRecords };
+        return { ...resident, presentCount, absentCount, unmarkedCount, totalSlots: dates.length * 2, dailyRecords };
       });
 
       setReportData({ dates, report });
@@ -126,12 +128,12 @@ const AttendanceReportView = () => {
       const dt = new Date(d + 'T00:00:00');
       return `${dt.getDate()}/${dt.getMonth() + 1}`;
     });
-    const header = ['Name', 'Phone', 'Status', ...dateHeaders, 'Present', 'Absent', 'Unmarked', 'Attendance %'];
+    const header = ['Name', 'Phone', 'Status', ...dateHeaders, 'Present (Sessions)', 'Absent (Sessions)', 'Unmarked (Sessions)', 'Attendance %'];
 
     const rows = filtered.map(r => {
-      const pct = r.totalDays > 0 ? ((r.presentDays / r.totalDays) * 100).toFixed(1) + '%' : '0%';
+      const pct = r.totalSlots > 0 ? ((r.presentCount / r.totalSlots) * 100).toFixed(1) + '%' : '0%';
       const dailyCells = dates.map(d => r.dailyRecords[d] || '--');
-      return [r.name || '', r.phone || '', statusLabels[r.status] || r.status, ...dailyCells, r.presentDays, r.absentDays, r.unmarkedDays, pct];
+      return [r.name || '', r.phone || '', statusLabels[r.status] || r.status, ...dailyCells, r.presentCount, r.absentCount, r.unmarkedCount, pct];
     });
 
     const csv = [header, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
@@ -211,23 +213,23 @@ const AttendanceReportView = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div style={{ background: 'white', padding: '1.25rem', borderRadius: 'var(--radius-lg)', textAlign: 'center', border: '1px solid var(--border)', borderBottom: '4px solid var(--success)' }}>
-              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--success)', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.presentDays, 0)}</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Present</p>
+              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--success)', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.presentCount, 0)}</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Present (Sessions)</p>
             </div>
             <div style={{ background: 'white', padding: '1.25rem', borderRadius: 'var(--radius-lg)', textAlign: 'center', border: '1px solid var(--border)', borderBottom: '4px solid var(--danger)' }}>
-              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--danger)', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.absentDays, 0)}</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Absent</p>
+              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--danger)', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.absentCount, 0)}</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Absent (Sessions)</p>
             </div>
             <div style={{ background: 'white', padding: '1.25rem', borderRadius: 'var(--radius-lg)', textAlign: 'center', border: '1px solid var(--border)', borderBottom: '4px solid #cbd5e1' }}>
-              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: '#64748b', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.unmarkedDays, 0)}</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>No Data</p>
+              <p style={{ fontSize: '1.75rem', fontWeight: '800', color: '#64748b', marginBottom: '4px' }}>{filtered.reduce((s, r) => s + r.unmarkedCount, 0)}</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Unmarked Slots</p>
             </div>
           </div>
 
           {/* Records List */}
           <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '6rem' }}>
             {filtered.length > 0 ? filtered.map(r => {
-              const pct = r.totalDays > 0 ? ((r.presentDays / r.totalDays) * 100).toFixed(0) : 0;
+              const pct = r.totalSlots > 0 ? ((r.presentCount / r.totalSlots) * 100).toFixed(0) : 0;
               return (
                 <GlassCard key={r.id} style={{ padding: '1.25rem', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.25rem' }}>
@@ -261,24 +263,31 @@ const AttendanceReportView = () => {
                   {/* Daily Pulse Graph */}
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '1rem' }}>
                     {reportData.dates.map(date => {
-                      const val = r.dailyRecords[date];
-                      const bg = val === 'Present' ? 'var(--success)' 
-                        : val === 'Absent' ? 'var(--danger)' 
-                        : val === 'Discharged' ? '#f59e0b'
-                        : val === 'Died' ? '#6b7280'
-                        : '#e2e8f0';
+                      const val = r.dailyRecords[date] || '';
+                      let bg = '#e2e8f0'; // Default unmarked
+                      
+                      if (val === 'Discharged') bg = '#f59e0b';
+                      else if (val === 'Died') bg = '#6b7280';
+                      else if (val.includes('|')) {
+                        const getColor = (char) => char === '✓' ? 'var(--success)' : char === '✗' ? 'var(--danger)' : '#e2e8f0';
+                        const parts = val.split(' | ');
+                        const mrnChar = parts[0]?.slice(-1) || '-';
+                        const eveChar = parts[1]?.slice(-1) || '-';
+                        bg = `linear-gradient(135deg, ${getColor(mrnChar)} 50%, ${getColor(eveChar)} 50%)`;
+                      }
+
                       const dt = new Date(date + 'T00:00:00');
                       return (
                         <div key={date} title={`${dt.getDate()}/${dt.getMonth()+1}: ${val}`}
-                          style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: bg, transition: 'transform 0.2s' }} 
+                          style={{ width: '22px', height: '22px', borderRadius: '5px', background: bg, transition: 'transform 0.2s' }} 
                           className="hover:scale-110" />
                       );
                     })}
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', fontWeight: '700' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--success)'}}></div> {r.presentDays} Days Present</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--danger)'}}></div> {r.absentDays} Days Absent</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--success)'}}></div> {r.presentCount} Sessions</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--danger)'}}></div> {r.absentCount} Sessions</span>
                   </div>
                 </GlassCard>
               );

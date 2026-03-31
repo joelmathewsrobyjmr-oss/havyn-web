@@ -10,7 +10,7 @@ import GlassCard from '../components/GlassCard';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
-const StatCard = ({ icon: Icon, label, value, color, onClick }) => (
+const StatCard = ({ label, value, color, onClick }) => (
   <GlassCard 
     style={{ 
       padding: '0.9rem 0.75rem',
@@ -232,7 +232,7 @@ const StatDetailModal = ({ isOpen, onClose, type, data, color }) => {
   );
 };
 
-const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
+const DashboardCard = ({ title, description, onClick, color }) => (
   <GlassCard 
     style={{ 
       cursor: 'pointer', 
@@ -268,7 +268,7 @@ const DashboardCard = ({ icon: Icon, title, description, onClick, color }) => (
 
 const DashboardView = () => {
   const navigate = useNavigate();
-  const { userData, logout, institutionId, institutionData } = useAuth();
+  const { userData, institutionId, institutionData } = useAuth();
     const [stats, setStats] = useState({
     residents: 0,
     attendanceToday: 0,
@@ -290,11 +290,17 @@ const DashboardView = () => {
     // Fetch Today's Attendance Count
     const today = new Date().toISOString().split('T')[0];
     const attendanceRecordsQuery = query(
-      collection(db, 'institutions', institutionId, 'attendance', today, 'records'),
-      where('present', '==', true)
+      collection(db, 'institutions', institutionId, 'attendance', today, 'records')
     );
     const unsubAttendance = onSnapshot(attendanceRecordsQuery, (snapshot) => {
-      setStats(prev => ({ ...prev, attendanceToday: snapshot.size }));
+      let markedPresent = 0;
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        if (d.present === true || d.eveningPresent === true) {
+          markedPresent++;
+        }
+      });
+      setStats(prev => ({ ...prev, attendanceToday: markedPresent }));
     });
 
     // Fetch Pending Donations (Food + Fund)

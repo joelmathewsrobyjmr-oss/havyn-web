@@ -16,12 +16,12 @@ const statusColors = {
 };
 
 /* ─────────── Attendance Row ─────────── */
-const AttendanceRow = ({ resident, onToggle }) => {
+const AttendanceRow = ({ resident, isPresent, onToggle }) => {
   const [animatePresent, setAnimatePresent] = useState(false);
   const [animateAbsent, setAnimateAbsent] = useState(false);
 
   const handlePresentClick = () => {
-    if (resident.present !== true) {
+    if (isPresent !== true) {
       setAnimatePresent(true);
       setTimeout(() => setAnimatePresent(false), 1200);
     }
@@ -29,7 +29,7 @@ const AttendanceRow = ({ resident, onToggle }) => {
   };
 
   const handleAbsentClick = () => {
-    if (resident.present !== false) {
+    if (isPresent !== false) {
       setAnimateAbsent(true);
       setTimeout(() => setAnimateAbsent(false), 1200);
     }
@@ -60,12 +60,12 @@ const AttendanceRow = ({ resident, onToggle }) => {
           <button onClick={handlePresentClick}
             style={{
               width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-              backgroundColor: resident.present === true ? 'var(--success)' : 'white',
-              color: resident.present === true ? 'white' : 'var(--text-muted)',
-              border: `1px solid ${resident.present === true ? 'var(--success)' : 'var(--border)'}`,
+              backgroundColor: isPresent === true ? 'var(--success)' : 'white',
+              color: isPresent === true ? 'white' : 'var(--text-muted)',
+              border: `1px solid ${isPresent === true ? 'var(--success)' : 'var(--border)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s ease', cursor: 'pointer',
-              boxShadow: resident.present === true ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
+              boxShadow: isPresent === true ? '0 4px 12px rgba(34, 197, 94, 0.3)' : 'none',
               transform: animatePresent ? 'scale(1.1)' : 'scale(1)',
               zIndex: 2
             }}>
@@ -93,12 +93,12 @@ const AttendanceRow = ({ resident, onToggle }) => {
           <button onClick={handleAbsentClick}
             style={{
               width: '42px', height: '42px', borderRadius: 'var(--radius-md)',
-              backgroundColor: resident.present === false ? 'var(--danger)' : 'white',
-              color: resident.present === false ? 'white' : 'var(--text-muted)',
-              border: `1px solid ${resident.present === false ? 'var(--danger)' : 'var(--border)'}`,
+              backgroundColor: isPresent === false ? 'var(--danger)' : 'white',
+              color: isPresent === false ? 'white' : 'var(--text-muted)',
+              border: `1px solid ${isPresent === false ? 'var(--danger)' : 'var(--border)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s ease', cursor: 'pointer',
-              boxShadow: resident.present === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none',
+              boxShadow: isPresent === false ? '0 4px 12px rgba(239, 68, 68, 0.3)' : 'none',
               transform: animateAbsent ? 'scale(1.1)' : 'scale(1)',
               zIndex: 2
             }}>
@@ -130,6 +130,7 @@ const AttendanceView = () => {
   const navigate = useNavigate();
   const { institutionId, user } = useAuth();
   const [tab, setTab] = useState('mark'); // 'mark' | 'report'
+  const [activeSession, setActiveSession] = useState('morning'); // 'morning' | 'evening'
 
   // ── Mark tab state ──
   const [residents, setResidents] = useState([]);
@@ -153,6 +154,7 @@ const AttendanceView = () => {
       setEndDate(today.toISOString().split('T')[0]);
       setStartDate(weekAgo.toISOString().split('T')[0]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [institutionId]);
 
   /* ── Mark Attendance helpers ── */
@@ -167,9 +169,18 @@ const AttendanceView = () => {
       // Fetch today's records for this institution
       const attSnap = await getDocs(collection(db, 'institutions', institutionId, 'attendance', todayKey, 'records'));
       const attMap = {};
-      attSnap.forEach(d => { attMap[d.id] = d.data().present; });
+      attSnap.forEach(d => { 
+        attMap[d.id] = {
+          present: d.data().present,
+          eveningPresent: d.data().eveningPresent
+        }; 
+      });
       
-      const merged = all.map(r => ({ ...r, present: attMap[r.id] !== undefined ? attMap[r.id] : null }));
+      const merged = all.map(r => ({ 
+        ...r, 
+        present: attMap[r.id] !== undefined ? attMap[r.id].present : null,
+        eveningPresent: attMap[r.id] !== undefined ? attMap[r.id].eveningPresent : null
+      }));
       setResidents(merged);
     } catch (err) {
       console.error('Error loading attendance:', err);
@@ -179,7 +190,13 @@ const AttendanceView = () => {
   };
 
   const handleToggle = (id, present) => {
-    setResidents(prev => prev.map(r => r.id === id ? { ...r, present } : r));
+    setResidents(prev => prev.map(r => {
+      if (r.id === id) {
+        if (activeSession === 'morning') return { ...r, present };
+        return { ...r, eveningPresent: present };
+      }
+      return r;
+    }));
   };
 
   const handleSave = async () => {
@@ -187,15 +204,27 @@ const AttendanceView = () => {
     setSaving(true);
     try {
       const promises = residents.map(r => {
-        if (r.present !== null) {
-          return setDoc(doc(db, 'institutions', institutionId, 'attendance', todayKey, 'records', r.id), {
-            name: r.name, 
-            present: r.present, 
-            timestamp: serverTimestamp(),
-            updatedBy: user.uid
-          });
+        const hasMorning = r.present !== null && r.present !== undefined;
+        const hasEvening = r.eveningPresent !== null && r.eveningPresent !== undefined;
+        
+        if (!hasMorning && !hasEvening) return null;
+
+        const dataToSave = { 
+          name: r.name, 
+          updatedBy: user.uid 
+        };
+
+        if (activeSession === 'morning' && hasMorning) {
+          dataToSave.present = r.present;
+          dataToSave.timestamp = serverTimestamp();
+        } else if (activeSession === 'evening' && hasEvening) {
+          dataToSave.eveningPresent = r.eveningPresent;
+          dataToSave.eveningTimestamp = serverTimestamp();
+        } else {
+          return null;
         }
-        return null;
+
+        return setDoc(doc(db, 'institutions', institutionId, 'attendance', todayKey, 'records', r.id), dataToSave, { merge: true });
       }).filter(Boolean);
       
       await Promise.all(promises);
@@ -205,8 +234,9 @@ const AttendanceView = () => {
         institutionId,
         userId: user.uid,
         action: 'MARK_ATTENDANCE',
+        session: activeSession,
         date: todayKey,
-        count: residents.filter(r => r.present !== null).length,
+        count: residents.filter(r => activeSession === 'morning' ? (r.present !== null && r.present !== undefined) : (r.eveningPresent !== null && r.eveningPresent !== undefined)).length,
         timestamp: serverTimestamp()
       });
 
@@ -218,7 +248,7 @@ const AttendanceView = () => {
     }
   };
 
-  const markedCount = residents.filter(r => r.present !== null).length;
+  const markedCount = residents.filter(r => activeSession === 'morning' ? (r.present !== null && r.present !== undefined) : (r.eveningPresent !== null && r.eveningPresent !== undefined)).length;
 
   /* ── Report helpers ── */
   const generateReport = async () => {
@@ -319,6 +349,11 @@ const AttendanceView = () => {
       {/* ════════ MARK TAB ════════ */}
       {tab === 'mark' && (
         <>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1.25rem' }}>
+            <button onClick={() => setActiveSession('morning')} style={{ flex: 1, padding: '10px', borderRadius: 'var(--radius-md)', background: activeSession === 'morning' ? 'var(--primary-light)' : 'white', color: activeSession === 'morning' ? 'var(--primary)' : 'var(--text-muted)', border: `1px solid ${activeSession === 'morning' ? 'var(--primary)' : 'var(--border)'}`, fontWeight: '600', transition: 'all 0.2s', cursor: 'pointer' }}>☀️ Morning</button>
+            <button onClick={() => setActiveSession('evening')} style={{ flex: 1, padding: '10px', borderRadius: 'var(--radius-md)', background: activeSession === 'evening' ? 'var(--primary-light)' : 'white', color: activeSession === 'evening' ? 'var(--primary)' : 'var(--text-muted)', border: `1px solid ${activeSession === 'evening' ? 'var(--primary)' : 'var(--border)'}`, fontWeight: '600', transition: 'all 0.2s', cursor: 'pointer' }}>🌙 Evening</button>
+          </div>
+
           <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '1rem', fontWeight: '500' }}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
@@ -326,9 +361,10 @@ const AttendanceView = () => {
           <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '6rem' }}>
             {residents.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {residents.map(r => (
-                  <AttendanceRow key={r.id} resident={r} onToggle={handleToggle} />
-                ))}
+                {residents.map(r => {
+                  const isPresent = activeSession === 'morning' ? r.present : r.eveningPresent;
+                  return <AttendanceRow key={r.id} resident={r} isPresent={isPresent} onToggle={handleToggle} />;
+                })}
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)', opacity: 0.6 }}>
@@ -347,7 +383,7 @@ const AttendanceView = () => {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} /> Processing...
                 </span>
-              ) : 'Submit Today\'s Attendance'}
+              ) : `Submit ${activeSession === 'morning' ? 'Morning' : 'Evening'} Attendance`}
             </Button>
           </div>
         </>
