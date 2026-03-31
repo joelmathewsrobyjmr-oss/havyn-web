@@ -11,14 +11,16 @@ const statusColors = {
   active: 'var(--success)',
   inactive: '#9ca3af',
   discharged: '#f59e0b',
-  died: 'var(--danger)'
+  died: 'var(--danger)',
+  deceased: 'var(--danger)'
 };
 
 const statusLabels = {
   active: 'Active',
   inactive: 'Inactive',
   discharged: 'Discharged',
-  died: 'Died'
+  died: 'Deceased',
+  deceased: 'Deceased'
 };
 
 const AttendanceReportView = () => {
@@ -196,7 +198,7 @@ const AttendanceReportView = () => {
           {/* Dashboard Summary Tabs */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', padding: '0 4px' }}>
             <Filter size={16} color="var(--text-muted)" style={{ marginRight: '4px' }} />
-            {['all', 'active', 'inactive', 'discharged', 'died'].map(s => (
+            {['all', 'active', 'inactive', 'discharged', 'deceased'].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)}
                 style={{
                   padding: '6px 14px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600',
@@ -267,7 +269,7 @@ const AttendanceReportView = () => {
                       let bg = '#e2e8f0'; // Default unmarked
                       
                       if (val === 'Discharged') bg = '#f59e0b';
-                      else if (val === 'Died') bg = '#6b7280';
+                      else if (val === 'Died' || val === 'Deceased') bg = '#6b7280';
                       else if (val.includes('|')) {
                         const getColor = (char) => char === '✓' ? 'var(--success)' : char === '✗' ? 'var(--danger)' : '#e2e8f0';
                         const parts = val.split(' | ');

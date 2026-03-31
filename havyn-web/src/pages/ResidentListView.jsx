@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Loader2, Download } from 'lucide-react';
-import { collection, deleteDoc, doc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import Input from '../components/Input';
@@ -36,10 +36,19 @@ const ResidentListView = () => {
     return () => unsubscribe();
   }, [institutionId]);
 
-  const filteredResidents = residents.filter(r => 
-    r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredResidents = residents
+    .filter(r => 
+      r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.status || '').toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aDeceased = a.status === 'died' || a.status === 'deceased';
+      const bDeceased = b.status === 'died' || b.status === 'deceased';
+      if (aDeceased && !bDeceased) return 1;
+      if (!aDeceased && bDeceased) return -1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   const downloadCSV = () => {
     if (residents.length === 0) return;
@@ -96,7 +105,7 @@ const ResidentListView = () => {
                 key={resident.id}
                 name={resident.name || 'Unnamed'}
                 email={resident.email || ''}
-                status={resident.status || 'active'}
+                status={resident.status === 'died' ? 'deceased' : (resident.status || 'active')}
                 imageUrl={resident.profileImage || ''}
                 onClick={() => navigate(`/resident/${resident.id}/view`)}
               />

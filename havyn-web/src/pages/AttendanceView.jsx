@@ -12,7 +12,8 @@ const statusColors = {
   active: 'var(--success)',
   inactive: '#9ca3af',
   discharged: '#f59e0b',
-  died: 'var(--danger)'
+  died: 'var(--danger)',
+  deceased: 'var(--danger)'
 };
 
 /* ─────────── Attendance Row ─────────── */
@@ -52,7 +53,9 @@ const AttendanceRow = ({ resident, isPresent, onToggle }) => {
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <h4 style={{ fontSize: '1rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resident.name}</h4>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{resident.status}</p>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+          {resident.status === 'died' ? 'deceased' : resident.status}
+        </p>
       </div>
       <div style={{ display: 'flex', gap: '0.65rem' }}>
         {/* Present Button */}
@@ -164,7 +167,11 @@ const AttendanceView = () => {
       // Fetch institution-specific residents
       const q = query(collection(db, 'institutions', institutionId, 'residents'), orderBy('name'));
       const snapshot = await getDocs(q);
-      const all = snapshot.docs.map(d => ({ id: d.id, ...d.data(), present: null }));
+      
+      // Filter out deceased/died residents entirely from the marking flow
+      const all = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data(), present: null }))
+        .filter(r => r.status !== 'died' && r.status !== 'deceased');
       
       // Fetch today's records for this institution
       const attSnap = await getDocs(collection(db, 'institutions', institutionId, 'attendance', todayKey, 'records'));
@@ -281,7 +288,7 @@ const AttendanceView = () => {
           const rec = attByDate[date]?.[r.id];
           if (rec?.present === true) { presentDays++; daily[date] = 'Present'; }
           else if (rec?.present === false) { absentDays++; daily[date] = 'Absent'; }
-          else { unmarkedDays++; daily[date] = r.status === 'discharged' ? 'Discharged' : r.status === 'died' ? 'Died' : '--'; }
+          else { unmarkedDays++; daily[date] = r.status === 'discharged' ? 'Discharged' : (r.status === 'died' || r.status === 'deceased') ? 'Deceased' : '--'; }
         });
         return { ...r, presentDays, absentDays, unmarkedDays, totalDays: dates.length, daily };
       });
@@ -290,7 +297,11 @@ const AttendanceView = () => {
     finally { setReportLoading(false); }
   };
 
-  const filteredReport = reportData?.report.filter(r => statusFilter === 'all' || r.status === statusFilter) || [];
+  const filteredReport = reportData?.report.filter(r => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'deceased' && (r.status === 'died' || r.status === 'deceased')) return true;
+    return r.status === statusFilter;
+  }) || [];
 
   const downloadCSV = () => {
     if (!reportData) return;
@@ -423,7 +434,7 @@ const AttendanceView = () => {
               {/* Filters */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', padding: '0 4px' }}>
                 <Filter size={16} color="var(--text-muted)" style={{ marginRight: '4px' }} />
-                {['all','active','inactive','discharged','died'].map(s => (
+                {['all','active','inactive','discharged','deceased'].map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)} style={{
                     padding: '6px 14px', borderRadius: '999px', fontSize: '0.75rem', fontWeight: '600',
                     textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer',
@@ -472,7 +483,9 @@ pre
                             </div>
                             <div style={{ flex: 1 }}>
                               <h4 style={{ fontSize: '1.05rem', fontWeight: '700', marginBottom: '2px' }}>{r.name}</h4>
-                              <span style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', padding: '3px 8px', borderRadius: '999px', backgroundColor: statusColors[r.status] || 'var(--success)', color: 'white' }}>{r.status}</span>
+                              <span style={{ fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', padding: '3px 8px', borderRadius: '999px', backgroundColor: statusColors[r.status] || 'var(--success)', color: 'white' }}>
+                                {r.status === 'died' ? 'deceased' : r.status}
+                              </span>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                               <p style={{ fontSize: '1.5rem', fontWeight: '800', color: Number(pct) >= 75 ? 'var(--success)' : Number(pct) >= 50 ? '#f59e0b' : 'var(--danger)' }}>{pct}%</p>
@@ -484,7 +497,7 @@ pre
                           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                             {reportData.dates.map(date => {
                               const val = r.daily[date];
-                              const bg = val === 'Present' ? 'var(--success)' : val === 'Absent' ? 'var(--danger)' : val === 'Discharged' ? '#f59e0b' : val === 'Died' ? '#6b7280' : '#e5e7eb';
+                              const bg = val === 'Present' ? 'var(--success)' : val === 'Absent' ? 'var(--danger)' : val === 'Discharged' ? '#f59e0b' : (val === 'Died' || val === 'Deceased') ? '#6b7280' : '#e5e7eb';
                               const dt = new Date(date+'T00:00:00');
                               return <div key={date} title={`${dt.getDate()}/${dt.getMonth()+1}: ${val}`} style={{ width: '22px', height: '22px', borderRadius: '5px', backgroundColor: bg, transition: 'transform 0.2s', cursor: 'help' }} className="hover:scale-110" />;
                             })}
