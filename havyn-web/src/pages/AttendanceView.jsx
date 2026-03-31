@@ -168,10 +168,11 @@ const AttendanceView = () => {
       const q = query(collection(db, 'institutions', institutionId, 'residents'), orderBy('name'));
       const snapshot = await getDocs(q);
       
-      // Filter out deceased/died residents entirely from the marking flow
+      // Only show ACTIVE residents in the attendance marking flow.
+      // Deceased, discharged, and inactive residents must NOT appear here.
       const all = snapshot.docs
         .map(d => ({ id: d.id, ...d.data(), present: null }))
-        .filter(r => r.status !== 'died' && r.status !== 'deceased');
+        .filter(r => r.status === 'active');
       
       // Fetch today's records for this institution
       const attSnap = await getDocs(collection(db, 'institutions', institutionId, 'attendance', todayKey, 'records'));
