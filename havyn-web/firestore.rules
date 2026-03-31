@@ -54,6 +54,13 @@ service cloud.firestore {
         allow write: if isInstitutionAdmin(instId);
       }
       
+      // Supply Needs (Public read, Admin create/delete, Donor/Admin update)
+      match /supplyNeeds/{needId} {
+        allow read: if isAuthenticated();
+        allow create, delete: if isInstitutionAdmin(instId);
+        allow update: if isAuthenticated(); // Donors need to update to mark as fulfilled
+      }
+      
       // Documents
       match /documents/{docId} {
         allow read, write: if isInstitutionAdmin(instId);
@@ -86,6 +93,15 @@ service cloud.firestore {
     match /activityLogs/{logId} {
       allow read: if isAdmin() && getUserData().institutionId == resource.data.institutionId;
       allow create: if isAuthenticated();
+    }
+
+    // Chats Collection
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated();
+      
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
     }
 
     // Collection Group rules (for Donation History)
