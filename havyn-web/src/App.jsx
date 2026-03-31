@@ -16,6 +16,7 @@ import DocumentsView from './pages/DocumentsView';
 import DonationsManagementView from './pages/DonationsManagementView';
 import FoodRequirementsView from './pages/FoodRequirementsView';
 import SupplyNeedsView from './pages/SupplyNeedsView';
+import InstitutionMessagesView from './pages/InstitutionMessagesView';
 import SettingsView from './pages/SettingsView';
 import LogsView from './pages/LogsView';
 import DonationReportView from './pages/DonationReportView';
@@ -25,6 +26,7 @@ import InstitutionDetailView from './pages/viewer/InstitutionDetailView';
 import FoodDonationView from './pages/viewer/FoodDonationView';
 import FundDonationView from './pages/viewer/FundDonationView';
 import DonationHistoryView from './pages/viewer/DonationHistoryView';
+import ViewerMessagesView from './pages/viewer/ViewerMessagesView';
 import MainLayout from './layouts/MainLayout';
 import './App.css';
 
@@ -56,6 +58,7 @@ function App() {
             <Route path="/donations" element={<DonationsManagementView />} />
             <Route path="/requirements" element={<FoodRequirementsView />} />
             <Route path="/needs" element={<SupplyNeedsView />} />
+            <Route path="/messages" element={<InstitutionMessagesView />} />
             <Route path="/logs" element={<LogsView />} />
             <Route path="/donation-report" element={<DonationReportView />} />
             <Route path="/settings" element={<SettingsView />} />
@@ -69,6 +72,7 @@ function App() {
             <Route path="/viewer/institution/:id/food" element={<FoodDonationView />} />
             <Route path="/viewer/institution/:id/fund" element={<FundDonationView />} />
             <Route path="/viewer/history" element={<DonationHistoryView />} />
+            <Route path="/viewer/messages" element={<ViewerMessagesView />} />
           </Route>
 
           {/* Fallback route */}

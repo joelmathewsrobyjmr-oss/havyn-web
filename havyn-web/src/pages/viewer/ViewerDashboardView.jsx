@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, HandHelping, History, LogOut } from 'lucide-react';
+import { Heart, HandHelping, History, LogOut, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import GlassCard from '../../components/GlassCard';
 
@@ -65,12 +65,18 @@ const ViewerDashboardView = () => {
         </GlassCard>
       </div>
 
-      <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+      <div style={{ marginTop: '3rem', textAlign: 'center', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <button 
           onClick={() => navigate('/viewer/history')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 2rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary-light)', fontWeight: '600', cursor: 'pointer' }}
         >
           <History size={20} /> View Your Donation History
+        </button>
+        <button 
+          onClick={() => navigate('/viewer/messages')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '1rem 2rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--primary)', color: 'white', border: '1px solid var(--primary)', fontWeight: '600', cursor: 'pointer' }}
+        >
+          <MessageCircle size={20} /> My Messages
         </button>
       </div>
     </div>

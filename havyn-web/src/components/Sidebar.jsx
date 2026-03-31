@@ -11,6 +11,7 @@ import {
   Activity,
   Package,
   BarChart3,
+  MessageCircle,
   X
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { icon: ShoppingBag, label: 'Donation Desk', path: '/donations' },
     { icon: FileText, label: 'Donation Report', path: '/donation-report' },
     { icon: Package, label: 'Supply Needs', path: '/needs' },
+    { icon: MessageCircle, label: 'Messages', path: '/messages' },
     { icon: FileText, label: 'Institutional Archives', path: '/documents' },
     { icon: Activity, label: 'Activity Audit', path: '/logs' },
     { icon: Settings, label: 'System Settings', path: '/settings' },

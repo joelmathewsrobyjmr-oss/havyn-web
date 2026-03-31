@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Building2, MapPin, Phone, Mail, Globe, HandHelping, Heart, ArrowLeft, Loader2, Info, Package } from 'lucide-react';
 import { doc, getDoc, collection, query, onSnapshot, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import GlassCard from '../../components/GlassCard';
 import Button from '../../components/Button';
 
@@ -12,6 +13,7 @@ const InstitutionDetailView = () => {
   const [institution, setInstitution] = useState(null);
   const [supplyNeeds, setSupplyNeeds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user, userData } = useAuth(); // Need user context to get donor ID/Email
 
   useEffect(() => {
     const fetchInstitution = async () => {
@@ -48,19 +50,34 @@ const InstitutionDetailView = () => {
         await updateDoc(doc(db, 'institutions', id, 'supplyNeeds', need.id), {
           status: 'fulfilled',
           fulfilledAt: serverTimestamp(),
-          fulfilledBy: 'A Donor (Public Viewer)'
+          fulfilledBy: userData?.name || user?.displayName || user?.email || 'A Donor'
         });
 
         // Notify the institution
         await addDoc(collection(db, 'institutions', id, 'notifications'), {
           type: 'SUPPLY_ACCEPTED',
           title: 'Supply Need Accepted!',
-          message: `A donor has opted to fulfill your request for: "${need.title}". They should be reaching out shortly.`,
+          message: `${userData?.name || user?.email || 'A donor'} has opted to fulfill your request for: "${need.title}".`,
           read: false,
           createdAt: serverTimestamp()
         });
+
+        // Create the Chat session in top-level collection
+        const chatRef = await addDoc(collection(db, 'chats'), {
+          needId: need.id,
+          needTitle: need.title,
+          donorId: user.uid,
+          donorName: userData?.name || user?.displayName || 'A Donor',
+          donorEmail: user.email,
+          institutionName: institution.name,
+          institutionId: id,
+          lastMessage: 'Chat initiated. Say hello!',
+          lastMessageTime: serverTimestamp(),
+          createdAt: serverTimestamp()
+        });
         
-        alert('Thank you! The institution has been notified. Please contact them using the details provided above to coordinate delivery.');
+        // Redirect directly into the chat room
+        navigate(`/viewer/messages?chatId=${chatRef.id}`);
       } catch (err) {
         console.error('Error accepting need:', err);
         alert('Something went wrong. Please try again.');
