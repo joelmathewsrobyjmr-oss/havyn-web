@@ -14,26 +14,22 @@ const UPI_APPS = [
   {
     name: 'GPay',
     color: '#4285F4',
-    icon: '🅖',
-    scheme: (upiLink) => upiLink, // Universal UPI link works for GPay on Android
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/256px-Google_Pay_Logo.svg.png',
   },
   {
     name: 'PhonePe',
     color: '#5f259f',
-    icon: '₱',
-    scheme: (upiLink) => upiLink,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/240px-PhonePe_Logo.svg.png',
   },
   {
     name: 'Paytm',
     color: '#00BAF2',
-    icon: '₹',
-    scheme: (upiLink) => upiLink,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Paytm_logo.png/240px-Paytm_logo.png',
   },
   {
     name: 'BHIM',
-    color: '#00A859',
-    icon: '🏛',
-    scheme: (upiLink) => upiLink,
+    color: '#007A3D',
+    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/d3/BHIM_logo.png/240px-BHIM_logo.png',
   },
 ];
 
@@ -96,10 +92,10 @@ const FundDonationView = () => {
     ? buildUpiLink(upiId, institutionName, amount)
     : null;
 
-  const handleUpiAppClick = (app) => {
+  const handleUpiAppClick = (_app) => {
     if (!upiLink) return;
     setPaymentInitiated(true);
-    window.location.href = app.scheme(upiLink);
+    window.location.href = upiLink;
   };
 
   const validate = () => {
@@ -265,7 +261,14 @@ const FundDonationView = () => {
                   }}
                   className="upi-app-btn"
                 >
-                  <span style={{ fontSize: '1.5rem', lineHeight: 1 }}>{app.icon}</span>
+                  <span style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img
+                      src={app.logo}
+                      alt={app.name}
+                      style={{ width: '38px', height: '38px', objectFit: 'contain', borderRadius: '8px' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </span>
                   <span style={{ fontSize: '0.7rem', fontWeight: '700', color: app.color }}>{app.name}</span>
                 </button>
               ))}
