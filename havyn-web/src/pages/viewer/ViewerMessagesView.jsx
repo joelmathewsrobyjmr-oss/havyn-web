@@ -20,6 +20,7 @@ const ViewerMessagesView = () => {
   const [loadingChats, setLoadingChats] = useState(true);
   
   const messagesEndRef = useRef(null);
+  const initialChatSelectedRef = useRef(false); // track if we've done the initial selection
 
   // 1. Fetch user's chats
   useEffect(() => {
@@ -31,9 +32,12 @@ const ViewerMessagesView = () => {
       setChats(list);
       setLoadingChats(false);
       
-      if (initialChatId && !activeChat) {
+      if (initialChatId && !initialChatSelectedRef.current) {
         const chatToSelect = list.find(c => c.id === initialChatId);
-        if (chatToSelect) setActiveChat(chatToSelect);
+        if (chatToSelect) {
+          setActiveChat(chatToSelect);
+          initialChatSelectedRef.current = true;
+        }
       }
     }, (err) => {
       console.error('Firestore Chat Error:', err);
@@ -41,7 +45,7 @@ const ViewerMessagesView = () => {
     });
 
     return () => unsub();
-  }, [user, initialChatId, activeChat]);
+  }, [user, initialChatId]); // REMOVED activeChat from deps — prevents infinite loop
 
   // 2. Fetch messages for active chat
   useEffect(() => {
@@ -98,7 +102,7 @@ const ViewerMessagesView = () => {
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1rem', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem', height: '100dvh', display: 'flex', flexDirection: 'column' }}>
       
       <button 
         onClick={() => navigate('/viewer/dashboard')}
@@ -111,9 +115,9 @@ const ViewerMessagesView = () => {
         
         {/* Left Side: Chat List (Hidden on mobile if activeChat exists) */}
         <div style={{ 
-          width: '320px', borderRight: '1px solid var(--border)', display: activeChat ? 'none' : 'flex', flexDirection: 'column', 
+          width: '320px', borderRight: '1px solid var(--border)', flexDirection: 'column', 
           background: 'var(--surface)' 
-        }} className="chat-list-container">
+        }} className={`chat-list-container ${activeChat ? 'chat-panel-hidden' : ''}`}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               <MessageCircle size={20} color="var(--primary)" /> Messages
@@ -151,7 +155,7 @@ const ViewerMessagesView = () => {
         </div>
 
         {/* Right Side: Chat Window */}
-        <div style={{ flex: 1, display: activeChat ? 'flex' : 'none', flexDirection: 'column', background: 'white' }} className="chat-window-container">
+        <div style={{ flex: 1, flexDirection: 'column', background: 'white' }} className={`chat-window-container ${activeChat ? 'chat-panel-active' : 'chat-panel-hidden'}`}>
           {activeChat ? (
             <>
               <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface)' }}>
@@ -231,15 +235,20 @@ const ViewerMessagesView = () => {
       </GlassCard>
 
       <style>{`
-        @media (max-width: 767px) {
-          .chat-list-container { width: 100% !important; border: none !important; }
-          .chat-window-container { width: 100% !important; }
-          .show-on-mobile-only { display: flex !important; }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Desktop: always show both panels side by side */
         @media (min-width: 768px) {
           .chat-list-container { display: flex !important; }
           .chat-window-container { display: flex !important; }
           .show-on-mobile-only { display: none !important; }
+        }
+        /* Mobile: full-width panels, toggle visibility with class */
+        @media (max-width: 767px) {
+          .chat-list-container { display: flex; width: 100% !important; border: none !important; }
+          .chat-window-container { display: flex; width: 100% !important; }
+          .chat-panel-hidden { display: none !important; }
+          .chat-panel-active { display: flex !important; }
+          .show-on-mobile-only { display: flex !important; }
         }
       `}</style>
     </div>

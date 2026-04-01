@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { Send, MessageCircle, Package, Loader2, User } from 'lucide-react';
+import { Send, MessageCircle, Package, Loader2, User, ArrowLeft } from 'lucide-react';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import GlassCard from '../components/GlassCard';
@@ -41,7 +41,7 @@ const InstitutionMessagesView = () => {
     });
 
     return () => unsub();
-  }, [institutionId, activeChat]);
+  }, [institutionId]); // DO NOT include activeChat — causes infinite re-render loop
 
   // 2. Fetch messages for active chat
   useEffect(() => {
@@ -98,7 +98,7 @@ const InstitutionMessagesView = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', animation: 'fadeIn 0.3s ease-out' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 120px)', animation: 'fadeIn 0.3s ease-out' }}>
       
       <header style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text)' }}>Messages</h1>
@@ -109,9 +109,9 @@ const InstitutionMessagesView = () => {
         
         {/* Left Side: Chat List (Hidden on mobile if activeChat exists) */}
         <div style={{ 
-          width: '350px', borderRight: '1px solid var(--border)', display: activeChat ? 'none' : 'flex', flexDirection: 'column', 
+          width: '350px', borderRight: '1px solid var(--border)', flexDirection: 'column', 
           background: 'var(--surface)' 
-        }} className="chat-list-container">
+        }} className={`chat-list-container ${activeChat ? 'chat-panel-hidden' : ''}`}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
               <MessageCircle size={20} color="var(--primary)" /> Active Chats
@@ -154,7 +154,7 @@ const InstitutionMessagesView = () => {
         </div>
 
         {/* Right Side: Chat Window */}
-        <div style={{ flex: 1, display: activeChat ? 'flex' : 'none', flexDirection: 'column', background: 'white' }} className="chat-window-container">
+        <div style={{ flex: 1, flexDirection: 'column', background: 'white' }} className={`chat-window-container ${activeChat ? 'chat-panel-active' : 'chat-panel-hidden'}`}>
           {activeChat ? (
             <>
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface)' }}>
@@ -236,15 +236,20 @@ const InstitutionMessagesView = () => {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @media (max-width: 767px) {
-          .chat-list-container { width: 100% !important; border: none !important; }
-          .chat-window-container { width: 100% !important; }
-          .show-on-mobile-only { display: flex !important; }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        /* Desktop: always show both panels */
         @media (min-width: 768px) {
           .chat-list-container { display: flex !important; }
           .chat-window-container { display: flex !important; }
           .show-on-mobile-only { display: none !important; }
+        }
+        /* Mobile: toggle panels with classes */
+        @media (max-width: 767px) {
+          .chat-list-container { display: flex; width: 100% !important; border: none !important; }
+          .chat-window-container { display: flex; width: 100% !important; }
+          .chat-panel-hidden { display: none !important; }
+          .chat-panel-active { display: flex !important; }
+          .show-on-mobile-only { display: flex !important; }
         }
       `}</style>
     </div>
