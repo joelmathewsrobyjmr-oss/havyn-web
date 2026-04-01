@@ -61,9 +61,18 @@ service cloud.firestore {
         allow update: if isAuthenticated(); // Donors need to update to mark as fulfilled
       }
       
-      // Documents
+      // Documents (root level, not inside a folder)
       match /documents/{docId} {
         allow read, write: if isInstitutionAdmin(instId);
+      }
+      
+      // Folders and files inside folders
+      match /folders/{folderId} {
+        allow read, write: if isInstitutionAdmin(instId);
+        
+        match /files/{fileId} {
+          allow read, write: if isInstitutionAdmin(instId);
+        }
       }
       
       // Notifications
